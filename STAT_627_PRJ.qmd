@@ -1,0 +1,27 @@
+---
+title: "STAT-627_PRJ"
+format: pdf
+editor: visual
+---
+
+```{r}
+library(dplyr)
+```
+
+
+#data preparation
+```{r}
+
+diabetes <- read_csv("/Users/laipoyu/Desktop/AU/SPRING_2024/STAT-627_4/Final/data/Dataset_of_Diabetes.csv")
+
+diabetes$BMI_Category <- cut(diabetes$BMI,
+                         breaks = c(-Inf, 18.5, 24.9, 29.9, Inf),
+                         labels = c("Underweight", "Normal", "Overweight", "Obese"))
+
+#summary of BMI
+BMI_summary <- diabetes %>%
+  group_by(Gender, BMI_Category) %>%
+  summarise(Count = n(), .groups = 'drop')
+```
+
+
