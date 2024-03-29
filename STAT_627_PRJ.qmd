@@ -12,7 +12,7 @@ library(tidyverse)
 #data preparation
 
 ```{r}
-setwd(getwd()) # setting working directory
+setwd(getwd()) # setting working directory for users
 
 diabetes <- read_csv("Dataset_of_Diabetes.csv")
 
@@ -28,5 +28,49 @@ BMI_summary <- diabetes %>%
 
 ```{r}
 diabetes
+```
+
+```{r}
+summary(diabetes)
+```
+
+```{r}
+gg_base <- ggplot(data = diabetes) 
+
+  gg_base + geom_bar(mapping = aes(x = Gender,
+                         fill = BMI_Category),
+                     position = "fill") +
+  theme_bw()
+```
+
+```{r}
+gg_base + geom_bar(mapping = aes(x = Gender,
+                         fill = CLASS),
+                   position = "fill") +
+  theme_bw()
+```
+
+
+```{r}
+par(mfrow = c(5, 2))
+diabetes_numeric_df <- diabetes[-c(1,2,3,14,15)]
+for (col in colnames(diabetes_numeric_df)) {
+  hist(diabetes_numeric_df[[col]], 
+       main = col, 
+       xlab = "")
+}
+```
+
+```{r}
+cor(diabetes_numeric_df)
+```
+
+
+```{r}
+pairs(diabetes_numeric_df)
+```
+
+```{r}
+
 ```
 
