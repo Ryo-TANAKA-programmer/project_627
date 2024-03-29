@@ -64,6 +64,7 @@ for (col in colnames(diabetes_numeric_df)) {
 ```{r}
 cor(diabetes_numeric_df)
 ```
+- Cr(Creatinine ratio) and Urea are categorized as highly correlated, therefore, we may want to deal with these variables. It is not surprising to see LDL and Cholesterole are also moderaly correlated.
 
 
 ```{r}
@@ -71,6 +72,5 @@ pairs(diabetes_numeric_df)
 ```
 
 ```{r}
-
 ```
 
