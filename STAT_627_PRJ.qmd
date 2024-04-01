@@ -35,6 +35,12 @@ diabetes <- diabetes_data %>%
 
 unique_values1 <- lapply(diabetes[c("Gender", "CLASS","BMI_Category")], unique)
 unique_values1
+
+# checking incomplete obs
+Clean_data <- diabetes %>%
+  mutate(
+    missing_count_SPS = rowSums(is.na(.[1:15])))
+#Clean_data$missing_count_SPS
 ```
 
 # Summary of the entire Dataset
