@@ -17,7 +17,7 @@ setwd(getwd()) # setting working directory for users
 diabetes_data <- read_csv("Dataset_of_Diabetes.csv")
 str(diabetes_data)
 
-diabetes_data$BMI_Category <- cut(diabetes$BMI,
+diabetes_data$BMI_Category <- cut(diabetes_data$BMI,
                          breaks = c(-Inf, 18.5, 24.9, 29.9, Inf),
                          labels = c("Underweight", "Normal", "Overweight", "Obese"))
 
