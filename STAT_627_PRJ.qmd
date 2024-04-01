@@ -14,7 +14,11 @@ library(tidyverse)
 ```{r}
 setwd(getwd()) # setting working directory for users
 
-diabetes <- read_csv("Dataset_of_Diabetes.csv")
+diabetes_data <- read_csv("Dataset_of_Diabetes.csv")
+
+#Data Cleaning
+diabetes<-diabetes_data%>%
+          mutate(across(3, ~ recode(., "f" = "F"))) 
 
 diabetes$BMI_Category <- cut(diabetes$BMI,
                          breaks = c(-Inf, 18.5, 24.9, 29.9, Inf),
