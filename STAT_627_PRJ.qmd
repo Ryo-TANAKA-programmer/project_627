@@ -27,17 +27,14 @@ diabetes_data$BMI_Category <- cut(diabetes$BMI,
 ```{r}
 ## checking consistency of the levels in "Gender", "CLASS","BMI_Category"
 unique_values <- lapply(diabetes_data[c("Gender", "CLASS","BMI_Category")], unique)
+unique_values
 
-# Print unique values for each column
-for (i in seq_along(unique_values)) {
-  cat("Unique values in column", names(unique_values)[i], ":", length(unique_values[[i]]), "\n")
-  print(unique_values[[i]])
-}
+## Fixing f = "F" and "N " = "N","Y "= "Y"
+diabetes <- diabetes_data %>%
+  mutate(across(c(3, 14), ~ recode(., "f" = "F", "N " = "N", "Y " = "Y")))
 
-## Fixing f = "F"
-diabetes<-diabetes_data%>%
-          mutate(across(3, ~ recode(., "f" = "F"))) 
-
+unique_values1 <- lapply(diabetes[c("Gender", "CLASS","BMI_Category")], unique)
+unique_values1
 ```
 
 # Summary of the entire Dataset
