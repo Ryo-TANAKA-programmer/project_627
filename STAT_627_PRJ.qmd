@@ -15,27 +15,41 @@ library(tidyverse)
 setwd(getwd()) # setting working directory for users
 
 diabetes_data <- read_csv("Dataset_of_Diabetes.csv")
+str(diabetes_data)
 
-#Data Cleaning
-diabetes<-diabetes_data%>%
-          mutate(across(3, ~ recode(., "f" = "F"))) 
-
-diabetes$BMI_Category <- cut(diabetes$BMI,
+diabetes_data$BMI_Category <- cut(diabetes$BMI,
                          breaks = c(-Inf, 18.5, 24.9, 29.9, Inf),
                          labels = c("Underweight", "Normal", "Overweight", "Obese"))
 
+```
+
+#Data Cleaning
+```{r}
+## checking consistency of the levels in "Gender", "CLASS","BMI_Category"
+unique_values <- lapply(diabetes_data[c("Gender", "CLASS","BMI_Category")], unique)
+
+# Print unique values for each column
+for (i in seq_along(unique_values)) {
+  cat("Unique values in column", names(unique_values)[i], ":", length(unique_values[[i]]), "\n")
+  print(unique_values[[i]])
+}
+
+## Fixing f = "F"
+diabetes<-diabetes_data%>%
+          mutate(across(3, ~ recode(., "f" = "F"))) 
+
+```
+
+# Summary of the entire Dataset
+```{r}
+summary(diabetes)
+```
+
+```{r}
 #summary of BMI
 BMI_summary <- diabetes %>%
   group_by(Gender, BMI_Category) %>%
   summarise(Count = n(), .groups = 'drop')
-```
-
-```{r}
-diabetes
-```
-
-```{r}
-summary(diabetes)
 ```
 
 ```{r}
