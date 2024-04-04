@@ -110,6 +110,6 @@ pairs(diabetes_numeric_df)
 full_reg <- glm(CLASS ~ .,
                 family = "binomial",
                 data = diabetes_ver1)
-summary(full_reg)
+summary(full_reg) 
 ```
 
