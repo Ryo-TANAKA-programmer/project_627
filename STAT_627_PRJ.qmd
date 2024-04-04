@@ -9,7 +9,7 @@ library(dplyr)
 library(tidyverse)
 ```
 
-#data preparation
+# data preparation
 
 ```{r}
 setwd(getwd()) # setting working directory for users
@@ -56,6 +56,21 @@ BMI_summary <- diabetes %>%
 ```
 
 ```{r}
+diabetes
+```
+
+```{r}
+diabetes_ver1 <- diabetes[-c(1,2)]
+diabetes_ver1 <- diabetes_ver1 %>% 
+  mutate(CLASS = as.factor(CLASS))
+```
+
+
+```{r}
+summary(diabetes)
+```
+
+```{r}
 gg_base <- ggplot(data = diabetes) 
 
   gg_base + geom_bar(mapping = aes(x = Gender,
@@ -71,7 +86,6 @@ gg_base + geom_bar(mapping = aes(x = Gender,
   theme_bw()
 ```
 
-
 ```{r}
 par(mfrow = c(5, 2))
 diabetes_numeric_df <- diabetes[-c(1,2,3,14,15)]
@@ -85,13 +99,17 @@ for (col in colnames(diabetes_numeric_df)) {
 ```{r}
 cor(diabetes_numeric_df)
 ```
-- Cr(Creatinine ratio) and Urea are categorized as highly correlated, therefore, we may want to deal with these variables. It is not surprising to see LDL and Cholesterole are also moderaly correlated.
 
+-   Cr(Creatinine ratio) and Urea are categorized as highly correlated, therefore, we may want to deal with these variables. It is not surprising to see LDL and Cholesterole are also moderaly correlated.
 
 ```{r}
 pairs(diabetes_numeric_df)
 ```
 
 ```{r}
+full_reg <- glm(CLASS ~ .,
+                family = "binomial",
+                data = diabetes_ver1)
+summary(full_reg)
 ```
 
