@@ -4,6 +4,8 @@ format: pdf
 editor: visual
 ---
 
+# Hey! I made!!!
+
 ```{r}
 library(dplyr)
 library(tidyverse)
@@ -24,6 +26,7 @@ diabetes_data$BMI_Category <- cut(diabetes_data$BMI,
 ```
 
 #Data Cleaning
+
 ```{r}
 ## checking consistency of the levels in "Gender", "CLASS","BMI_Category"
 unique_values <- lapply(diabetes_data[c("Gender", "CLASS","BMI_Category")], unique)
@@ -44,6 +47,7 @@ Clean_data <- diabetes %>%
 ```
 
 # Summary of the entire Dataset
+
 ```{r}
 summary(diabetes)
 ```
@@ -64,7 +68,6 @@ diabetes_ver1 <- diabetes[-c(1,2)]
 diabetes_ver1 <- diabetes_ver1 %>% 
   mutate(CLASS = as.factor(CLASS))
 ```
-
 
 ```{r}
 summary(diabetes)
@@ -112,4 +115,3 @@ full_reg <- glm(CLASS ~ .,
                 data = diabetes_ver1)
 summary(full_reg) 
 ```
-
