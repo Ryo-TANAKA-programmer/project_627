@@ -48,7 +48,6 @@ diabetes <- diabetes %>%
 diabetes <- diabetes[diabetes$CLASS != "P",]
 diabetes <- diabetes[-c(1,2,16)]
 
-
 # Bright will bring his thoughts on only-p-dataset Saturday!
 p_only_diabetes <- diabetes %>% 
   filter(CLASS == "P")
@@ -131,9 +130,17 @@ reduced_dia_reg <- glm(CLASS ~ Gender + HbA1c +
                          Chol + TG,
                        data = diabetes,
                        family = "binomial")
+summary(reduced_dia_reg)
+
 summary_reduced_reg <- summary(reduced_dia_reg)
 
 ```
+
+```{r}
+anova(full_reg,
+      reduced_dia_reg)
+```
+
 
 ```{r}
 names(summary_reduced_reg)
@@ -143,7 +150,13 @@ names(summary_reduced_reg)
 
 ```{r}
 AIC(reduced_dia_reg)
+AIC(full_reg)
 ```
+
+```{r}
+
+```
+
 
 ```{r}
 subreg_reduced <- regsubsets(CLASS ~ Gender + HbA1c + Chol + TG, 
