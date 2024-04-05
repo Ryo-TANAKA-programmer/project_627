@@ -4,7 +4,6 @@ format: pdf
 editor: visual
 ---
 
-
 ```{r}
 library(dplyr)
 library(tidyverse)
@@ -47,7 +46,12 @@ diabetes <- diabetes %>%
 
 # Removing `P` in CLASS variable, ID and No.partition since we don't need them
 diabetes <- diabetes[diabetes$CLASS != "P",]
-diabetes <- diabetes[-c(1,2,13,16)]
+diabetes <- diabetes[-c(1,2,16)]
+
+
+# Bright will bring his thoughts on only-p-dataset Saturday!
+p_only_diabetes <- diabetes %>% 
+  filter(CLASS == "P")
 ```
 
 # Summary of the entire Dataset
@@ -70,7 +74,6 @@ diabetes <- diabetes %>%
   mutate(CLASS = as.factor(CLASS))
 is.factor(diabetes$CLASS)
 ```
-
 
 ```{r}
 gg_base <- ggplot(data = diabetes) 
@@ -136,13 +139,11 @@ summary_reduced_reg <- summary(reduced_dia_reg)
 names(summary_reduced_reg)
 ```
 
-
 ## AIC
 
 ```{r}
 AIC(reduced_dia_reg)
 ```
-
 
 ```{r}
 subreg_reduced <- regsubsets(CLASS ~ Gender + HbA1c + Chol + TG, 
@@ -153,4 +154,3 @@ summary_subreg_reduced$cp
 summary_subreg_reduced$adjr2
 summary_subreg_reduced$bic
 ```
-
