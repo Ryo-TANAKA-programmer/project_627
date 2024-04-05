@@ -39,10 +39,13 @@ unique_values1 <- lapply(diabetes[c("Gender", "CLASS","BMI_Category")], unique)
 unique_values1
 
 # checking incomplete obs
-Clean_data <- diabetes %>%
+diabetes <- diabetes %>%
   mutate(
     missing_count_SPS = rowSums(is.na(.[1:15])))
-#Clean_data$missing_count_SPS
+
+# Removing `P` in CLASS variable, ID and No.partition since we don't need them
+diabetes <- diabetes[diabetes$CLASS != "P",]
+diabetes <- diabetes[-c(1,2,13,16)]
 ```
 
 # Summary of the entire Dataset
@@ -52,26 +55,20 @@ summary(diabetes)
 ```
 
 ```{r}
-#summary of BMI
+# summary of BMI
 BMI_summary <- diabetes %>%
   group_by(Gender, BMI_Category) %>%
   summarise(Count = n(), .groups = 'drop')
+BMI_summary
 ```
 
 ```{r}
-diabetes
-```
-
-```{r}
-diabetes_ver1 <- diabetes[-c(1,2)]
-diabetes_ver1 <- diabetes_ver1 %>% 
+# Making CLASS factor
+diabetes <- diabetes %>% 
   mutate(CLASS = as.factor(CLASS))
+is.factor(diabetes$CLASS)
 ```
 
-264bccd (Adding logistic regression summary)
-```{r}
-summary(diabetes)
-```
 
 ```{r}
 gg_base <- ggplot(data = diabetes) 
@@ -91,7 +88,7 @@ gg_base + geom_bar(mapping = aes(x = Gender,
 
 ```{r}
 par(mfrow = c(5, 2))
-diabetes_numeric_df <- diabetes[-c(1,2,3,14,15)]
+diabetes_numeric_df <- diabetes[-c(1,12,13,14)]
 for (col in colnames(diabetes_numeric_df)) {
   hist(diabetes_numeric_df[[col]], 
        main = col, 
@@ -110,9 +107,9 @@ pairs(diabetes_numeric_df)
 ```
 
 ```{r}
+
 full_reg <- glm(CLASS ~ .,
                 family = "binomial",
-                data = diabetes_ver1)
-
+                data = diabetes)
 summary(full_reg) 
 ```
