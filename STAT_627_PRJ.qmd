@@ -4,7 +4,6 @@ format: pdf
 editor: visual
 ---
 
-# Hey! I made!!!
 
 ```{r}
 library(dplyr)
