@@ -4,6 +4,8 @@ format: pdf
 editor: visual
 ---
 
+# Hey Bright!! 
+
 ```{r}
 library(dplyr)
 library(tidyverse)
@@ -141,7 +143,6 @@ anova(full_reg,
       reduced_dia_reg)
 ```
 
-
 ```{r}
 names(summary_reduced_reg)
 ```
@@ -156,7 +157,6 @@ AIC(full_reg)
 ```{r}
 
 ```
-
 
 ```{r}
 subreg_reduced <- regsubsets(CLASS ~ Gender + HbA1c + Chol + TG, 
