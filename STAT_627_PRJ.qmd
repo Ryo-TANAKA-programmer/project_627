@@ -1,26 +1,23 @@
 ---
-title: "STAT-627_PRJ"
+  title: "STAT-627_PRJ"
 format: pdf
 editor: visual
 ---
-
-# Hey Bright!! I got your message!
-
+  
+  # Hey Bright!! I got your message!
+  
 ```{r}
 library(dplyr)
 library(tidyverse)
 library(leaps)
 library(rms)
-<<<<<<< HEAD
 library(dplyr)
 library(MASS)
-library(olsrr)
-library(car)
 library(glmnet)
 library(caret)
-library("boot")
-=======
->>>>>>> e411458edd050d126a89a8bae83126b428bfae24
+library(boot)
+library(car)
+library(olsrr)
 ```
 
 # data preparation
@@ -29,12 +26,12 @@ library("boot")
 
 setwd(getwd()) # setting working directory for users
 
-diabetes_data <- read_csv("Dataset_of_Diabetes.csv")
+diabetes_data <- read_csv("/Users/laipoyu/Desktop/AU/SPRING_2024/STAT-627_4/Final/project_627/Dataset_of_Diabetes.csv")
 str(diabetes_data)
 
 diabetes_data$BMI_Category <- cut(diabetes_data$BMI,
-                         breaks = c(-Inf, 18.5, 24.9, 29.9, Inf),
-                         labels = c("Underweight", "Normal", "Overweight", "Obese"))
+                                  breaks = c(-Inf, 18.5, 24.9, 29.9, Inf),
+                                  labels = c("Underweight", "Normal", "Overweight", "Obese"))
 
 ```
 
@@ -64,13 +61,10 @@ diabetes <- diabetes[-c(1,2,16)]
 # Bright will bring his thoughts on only-p-dataset Saturday!
 p_only_diabetes <- diabetes %>% 
   filter(CLASS == "P")
-<<<<<<< HEAD
 
 # make CLASS to 0 and 1
 diabetes <- diabetes %>%
   mutate(CLASS_BINARY = if_else(CLASS == "Y", 1, 0))
-=======
->>>>>>> e411458edd050d126a89a8bae83126b428bfae24
 ```
 
 # Summary of the entire Dataset
@@ -97,15 +91,15 @@ is.factor(diabetes$CLASS)
 ```{r}
 gg_base <- ggplot(data = diabetes) 
 
-  gg_base + geom_bar(mapping = aes(x = Gender,
-                         fill = BMI_Category),
-                     position = "fill") +
+gg_base + geom_bar(mapping = aes(x = Gender,
+                                 fill = BMI_Category),
+                   position = "fill") +
   theme_bw()
 ```
 
 ```{r}
 gg_base + geom_bar(mapping = aes(x = Gender,
-                         fill = CLASS),
+                                 fill = CLASS),
                    position = "fill") +
   theme_bw()
 ```
@@ -178,32 +172,42 @@ AIC(full_reg)
 
 ```{r}
 subreg_reduced <- regsubsets(CLASS ~ Gender + HbA1c + Chol + TG, 
-                        data = diabetes, 
-                        method = "exhaustive")
+                             data = diabetes, 
+                             method = "exhaustive")
 summary_subreg_reduced <- summary(subreg_reduced)
 summary_subreg_reduced$cp
 summary_subreg_reduced$adjr2
 summary_subreg_reduced$bic
 ```
-<<<<<<< HEAD
 
 
 ## STEP WISE
 ```{r}
-
+fit.small <- glm(CLASS_BINARY~ 1,
+                 family = "binomial",
+                data = diabetes)
 
 full_reg_BINARY <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
-    HDL + LDL + VLDL + BMI + BMI_Category,
-                family = "binomial",
-                data = diabetes)   # initial model
+                         HDL + LDL + VLDL + BMI + BMI_Category,
+                       family = "binomial",
+                       data = diabetes)   # initial model
 
-stepwiseModel <- stepAIC(full_reg_BINARY, direction="forward", data=diabetes)
+fit.step.15p <- step(full_reg_BINARY,
+                     scope = list(lower=fit.small,
+                                  upper=full_reg_BINARY),
+                     direction = "both",
+test = "F")
 
-summary(stepwiseModel)
 
-
-
+# last step has the best AIC which the best model is 
+#Gender
+#HbA1c
+#Chol (Cholesterol)
+#TG (Triglycerides)
+#BMI (Body Mass Index)
+#BMI_Category                             with response variable CLASS_BINARY
 ```
+
 ## CI
 ```{r}
 model_matrix <- model.matrix(full_reg, data = diabetes)[,-1]
@@ -244,11 +248,11 @@ test_data <- diabetes[!sample, ]
 
 # Create Design Matrices
 x_train <- model.matrix(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
-    HDL + LDL + VLDL + BMI + BMI_Category, data = train_data)[,-1] 
+                          HDL + LDL + VLDL + BMI + BMI_Category, data = train_data)[,-1] 
 y_train <- train_data$CLASS_BINARY
 
 x_test <- model.matrix(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
-    HDL + LDL + VLDL + BMI + BMI_Category, data = test_data)[,-1] 
+                         HDL + LDL + VLDL + BMI + BMI_Category, data = test_data)[,-1] 
 y_test <- test_data$CLASS_BINARY
 
 # Ridge Regression 
@@ -286,17 +290,3 @@ accuracy_lasso <- mean(predictions_lasso_binary == y_test)
 print(paste("Accuracy for Ridge Regression:", accuracy_ridge)) # 88% Accuracy rate
 print(paste("Accuracy for Lasso Regression:", accuracy_lasso)) # 11% Accuracy rate
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-=======
->>>>>>> e411458edd050d126a89a8bae83126b428bfae24
