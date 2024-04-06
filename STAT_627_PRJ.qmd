@@ -4,14 +4,26 @@ format: pdf
 editor: visual
 ---
 
+# Hey Bright!! I got your message!
+
 ```{r}
 library(dplyr)
 library(tidyverse)
+library(leaps)
+library(rms)
+library(dplyr)
+library(MASS)
+library(olsrr)
+library(car)
+library(glmnet)
+library(caret)
+library("boot")
 ```
 
-#data preparation
+# data preparation
 
 ```{r}
+
 setwd(getwd()) # setting working directory for users
 
 diabetes_data <- read_csv("Dataset_of_Diabetes.csv")
@@ -24,6 +36,7 @@ diabetes_data$BMI_Category <- cut(diabetes_data$BMI,
 ```
 
 #Data Cleaning
+
 ```{r}
 ## checking consistency of the levels in "Gender", "CLASS","BMI_Category"
 unique_values <- lapply(diabetes_data[c("Gender", "CLASS","BMI_Category")], unique)
@@ -37,22 +50,42 @@ unique_values1 <- lapply(diabetes[c("Gender", "CLASS","BMI_Category")], unique)
 unique_values1
 
 # checking incomplete obs
-Clean_data <- diabetes %>%
+diabetes <- diabetes %>%
   mutate(
     missing_count_SPS = rowSums(is.na(.[1:15])))
-#Clean_data$missing_count_SPS
+
+# Removing `P` in CLASS variable, ID and No.partition since we don't need them
+diabetes <- diabetes[diabetes$CLASS != "P",]
+diabetes <- diabetes[-c(1,2,16)]
+
+# Bright will bring his thoughts on only-p-dataset Saturday!
+p_only_diabetes <- diabetes %>% 
+  filter(CLASS == "P")
+
+# make CLASS to 0 and 1
+diabetes <- diabetes %>%
+  mutate(CLASS_BINARY = if_else(CLASS == "Y", 1, 0))
 ```
 
 # Summary of the entire Dataset
+
 ```{r}
 summary(diabetes)
 ```
 
 ```{r}
-#summary of BMI
+# summary of BMI
 BMI_summary <- diabetes %>%
   group_by(Gender, BMI_Category) %>%
   summarise(Count = n(), .groups = 'drop')
+BMI_summary
+```
+
+```{r}
+# Making CLASS factor
+diabetes <- diabetes %>% 
+  mutate(CLASS = as.factor(CLASS))
+is.factor(diabetes$CLASS)
 ```
 
 ```{r}
@@ -71,10 +104,9 @@ gg_base + geom_bar(mapping = aes(x = Gender,
   theme_bw()
 ```
 
-
 ```{r}
 par(mfrow = c(5, 2))
-diabetes_numeric_df <- diabetes[-c(1,2,3,14,15)]
+diabetes_numeric_df <- diabetes[-c(1,12,13,14)]
 for (col in colnames(diabetes_numeric_df)) {
   hist(diabetes_numeric_df[[col]], 
        main = col, 
@@ -85,13 +117,177 @@ for (col in colnames(diabetes_numeric_df)) {
 ```{r}
 cor(diabetes_numeric_df)
 ```
-- Cr(Creatinine ratio) and Urea are categorized as highly correlated, therefore, we may want to deal with these variables. It is not surprising to see LDL and Cholesterole are also moderaly correlated.
 
+-   Cr(Creatinine ratio) and Urea are categorized as highly correlated, therefore, we may want to deal with these variables. It is not surprising to see LDL and Cholesterole are also moderaly correlated.
 
 ```{r}
 pairs(diabetes_numeric_df)
 ```
 
 ```{r}
+diabetes$Gender <- as.factor(diabetes$Gender)
+is.factor(diabetes$Gender)
+full_reg <- glm(CLASS ~ .,
+                family = "binomial",
+                data = diabetes)
+summary(full_reg) 
 ```
+
+```{r}
+plot(full_reg)
+```
+
+```{r}
+# Removing non-significant variables
+
+reduced_dia_reg <- glm(CLASS ~ Gender + HbA1c +
+                         Chol + TG,
+                       data = diabetes,
+                       family = "binomial")
+summary(reduced_dia_reg)
+
+summary_reduced_reg <- summary(reduced_dia_reg)
+
+```
+
+```{r}
+anova(full_reg,
+      reduced_dia_reg)
+```
+
+```{r}
+names(summary_reduced_reg)
+```
+
+## AIC
+
+```{r}
+AIC(reduced_dia_reg)
+AIC(full_reg)
+```
+
+```{r}
+
+```
+
+```{r}
+subreg_reduced <- regsubsets(CLASS ~ Gender + HbA1c + Chol + TG, 
+                        data = diabetes, 
+                        method = "exhaustive")
+summary_subreg_reduced <- summary(subreg_reduced)
+summary_subreg_reduced$cp
+summary_subreg_reduced$adjr2
+summary_subreg_reduced$bic
+```
+
+
+## STEP WISE
+```{r}
+
+
+full_reg_BINARY <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
+    HDL + LDL + VLDL + BMI + BMI_Category,
+                family = "binomial",
+                data = diabetes)   # initial model
+
+stepwiseModel <- stepAIC(full_reg_BINARY, direction="forward", data=diabetes)
+
+summary(stepwiseModel)
+
+
+
+```
+## CI
+```{r}
+model_matrix <- model.matrix(full_reg, data = diabetes)[,-1]
+standardized_model_matrix <- scale(model_matrix)
+svd_results <- svd(standardized_model_matrix)
+
+eigenvalues <- svd_results$d^2
+condition_index <- sqrt(max(eigenvalues) / eigenvalues)
+
+
+column_names <- colnames(model_matrix)
+
+ci_with_names <- data.frame(Variable = column_names, Condition_Index = condition_index)
+
+print(ci_with_names)
+
+# Low Condition Index (< 30) all of our predictors are fall within 30, unlikely to have multicollinearity.
+```
+## VIF
+```{r}
+vif_values <- vif(full_reg)
+
+vif_values
+
+# BMI category has multicollinearity issue, but i think its fine cause they are all from BMI.
+# For the predictors with VIF values below 5, they are generally not concern of multicollinearity.
+
+
+```
+
+## Ridge and Lasso
+```{r}
+library(caret)
+set.seed(123)
+sample <- sample(c(TRUE, FALSE), nrow(diabetes), replace=TRUE, prob=c(0.5, 0.5))
+train_data <- diabetes[sample, ]
+test_data <- diabetes[!sample, ]
+
+# Create Design Matrices
+x_train <- model.matrix(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
+    HDL + LDL + VLDL + BMI + BMI_Category, data = train_data)[,-1] 
+y_train <- train_data$CLASS_BINARY
+
+x_test <- model.matrix(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
+    HDL + LDL + VLDL + BMI + BMI_Category, data = test_data)[,-1] 
+y_test <- test_data$CLASS_BINARY
+
+# Ridge Regression 
+
+cv_ridge <- cv.glmnet(x_train, y_train, alpha = 0, family = "binomial")
+opt_lambda_ridge <- cv_ridge$lambda.min
+ridge_model <- glmnet(x_train, y_train, alpha = 0, lambda = opt_lambda_ridge, family = "binomial")
+
+
+# Lasso Regression 
+
+cv_lasso <- cv.glmnet(x_train, y_train, alpha = 1, family = "binomial")
+opt_lambda_lasso <- cv_lasso$lambda.min
+lasso_model <- glmnet(x_train, y_train, alpha = 1, lambda = opt_lambda_lasso, family = "binomial")
+
+```
+
+```{r} 
+# Evaluate Models
+
+
+# Predictions on the testing set
+predictions_ridge <- predict(ridge_model, s = opt_lambda_ridge, newx = x_test, type = "response")
+predictions_lasso <- predict(lasso_model, s = opt_lambda_lasso, newx = x_test, type = "response")
+
+# Convert predictions to binary class based on a threshold 0.5
+predictions_ridge_binary <- ifelse(predictions_ridge > 0.5, 1, 0)
+predictions_lasso_binary <- ifelse(predictions_lasso > 0.5, 1, 0)
+
+# Calculate Accuracy 
+accuracy_ridge <- mean(predictions_ridge_binary == y_test)
+accuracy_lasso <- mean(predictions_lasso_binary == y_test)
+
+# Print Accuracy for comparison
+print(paste("Accuracy for Ridge Regression:", accuracy_ridge)) # 88% Accuracy rate
+print(paste("Accuracy for Lasso Regression:", accuracy_lasso)) # 11% Accuracy rate
+```
+
+
+
+
+
+
+
+
+
+
+
 
