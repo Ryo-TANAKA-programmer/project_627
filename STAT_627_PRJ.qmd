@@ -11,6 +11,7 @@ library(dplyr)
 library(tidyverse)
 library(leaps)
 library(rms)
+<<<<<<< HEAD
 library(dplyr)
 library(MASS)
 library(olsrr)
@@ -18,6 +19,8 @@ library(car)
 library(glmnet)
 library(caret)
 library("boot")
+=======
+>>>>>>> e411458edd050d126a89a8bae83126b428bfae24
 ```
 
 # data preparation
@@ -61,10 +64,13 @@ diabetes <- diabetes[-c(1,2,16)]
 # Bright will bring his thoughts on only-p-dataset Saturday!
 p_only_diabetes <- diabetes %>% 
   filter(CLASS == "P")
+<<<<<<< HEAD
 
 # make CLASS to 0 and 1
 diabetes <- diabetes %>%
   mutate(CLASS_BINARY = if_else(CLASS == "Y", 1, 0))
+=======
+>>>>>>> e411458edd050d126a89a8bae83126b428bfae24
 ```
 
 # Summary of the entire Dataset
@@ -179,6 +185,7 @@ summary_subreg_reduced$cp
 summary_subreg_reduced$adjr2
 summary_subreg_reduced$bic
 ```
+<<<<<<< HEAD
 
 
 ## STEP WISE
@@ -291,3 +298,5 @@ print(paste("Accuracy for Lasso Regression:", accuracy_lasso)) # 11% Accuracy ra
 
 
 
+=======
+>>>>>>> e411458edd050d126a89a8bae83126b428bfae24
