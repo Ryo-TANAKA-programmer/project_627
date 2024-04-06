@@ -61,7 +61,6 @@ diabetes <- diabetes %>%
     missing_count_SPS = rowSums(is.na(.[1:15])))
 
 # Removing `P` in CLASS variable, ID and No.partition since we don't need them
-diabetes <- diabetes[diabetes$CLASS != "P",]
 diabetes <- diabetes[-c(1,2,16)]
 
 # Bright will bring his thoughts on only-p-dataset Saturday!
