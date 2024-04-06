@@ -32,11 +32,12 @@ library(olsrr)
 setwd(getwd()) # setting working directory for users
 
 diabetes_data <- read_csv("Dataset_of_Diabetes.csv")
-str(diabetes_data)
+
 
 diabetes_data$BMI_Category <- cut(diabetes_data$BMI,
                                   breaks = c(-Inf, 18.5, 24.9, 29.9, Inf),
                                   labels = c("Underweight", "Normal", "Overweight", "Obese"))
+str(diabetes_data)
 
 ```
 
@@ -54,7 +55,6 @@ unique_values
 diabetes <- diabetes_data
 
 unique_values1 <- lapply(diabetes[c("Gender", "CLASS","BMI_Category")], unique)
-unique_values1
 
 # checking incomplete obs
 diabetes <- diabetes %>%
@@ -64,9 +64,6 @@ diabetes <- diabetes %>%
 # Removing `P` in CLASS variable, ID and No.partition since we don't need them
 diabetes <- diabetes[-c(1,2,16)]
 
-# Bright will bring his thoughts on only-p-dataset Saturday!
-p_only_diabetes <- diabetes %>% 
-  filter(CLASS == "P")
 
 # make CLASS to 0 and 1
 diabetes <- diabetes %>%
@@ -397,3 +394,113 @@ accuracy_lasso <- mean(predictions_lasso_binary == y_test)
 print(paste("Accuracy for Ridge Regression:", accuracy_ridge)) # 88% Accuracy rate
 print(paste("Accuracy for Lasso Regression:", accuracy_lasso)) # 11% Accuracy rate
 ```
+
+
+# Bright Work
+
+-LDA
+```{r}
+set.seed(123)
+n <- nrow(diabetes)
+Z <- sample(n, n/2)
+Data_training = diabetes[Z, ]
+Data_testing = diabetes[-Z, ]
+Data_training2 = diabetes[Z, ]
+Data_testing2 = diabetes[-Z, ]
+
+
+lda_out <- lda(CLASS_BINARY~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + HDL + LDL + VLDL  + BMI_Category, data = Data_training) # don't need CV = TRUE
+
+Predicted.CLASS_lda  <-  predict(lda_out, data.frame(Data_testing))$class
+
+table(Data_testing$CLASS_BINARY, Predicted.CLASS_lda)
+
+# Prediction Correct Classification Rate
+round(mean(Data_testing$CLASS_BINARY == Predicted.CLASS_lda), 3)
+
+round(mean(Predicted.CLASS_lda == "1"), 3)
+
+round(mean(Data_testing$CLASS_BINARY == "1"), 3)
+
+
+```
+
+QDA
+
+```{r}
+qda_out <- qda(CLASS_BINARY ~ AGE , data = Data_training) # don't need CV = TRUE
+
+Predicted.CLASS_qda  <-  predict(qda_out, data.frame(Data_training))$class
+
+table(Data_training$CLASS_BINARY, Predicted.CLASS_qda)
+
+# Prediction Correct Classification Rate
+qda_ccr <- round(mean(Data_testing$CLASS_BINARY == Predicted.CLASS_qda), 3)
+qda_ccr
+
+
+
+```
+
+
+
+# Apendix
+```{r}
+  
+data_test<- diabetes%>%
+  select(-Gender,-BMI_Category)
+
+# Assuming Clean_data is your dataframe and CLASS is the grouping variable
+
+# Define the function to perform ANOVA and tidy results
+perform_anova <- function(data, group_var, ...) {
+  # Select only numeric columns for ANOVA
+  numeric_cols <- sapply(data, is.numeric)
+  numeric_data <- data[, numeric_cols]
+  
+  # Perform ANOVA for each numeric column
+  anova_results <- lapply(numeric_data, function(column) {
+    aov_result <- aov(column ~ get(group_var), data = data)
+    tidy(aov_result)
+  })
+  
+  # Combine ANOVA results into a single dataframe
+  anova_df <- do.call(rbind, anova_results)
+  
+  # Add column indicating the variable name
+  anova_df$variable <- rownames(anova_df)
+  
+  return(anova_df)
+}
+
+# Apply the function to your data
+data_anova <- data_test  %>%
+  do(perform_anova(data_test, "CLASS"))
+
+# Group by CLASS and calculate mean for each numeric variable
+means_by_class <- data_test %>%
+  group_by(CLASS) %>%
+  summarise_all(mean,na.rm = TRUE)
+
+additional_values_df <- data.frame(
+  CLASS = "pvalue",
+  AGE = 6.405477e-55,
+  Urea = 6.329202e-02,
+  Cr = 4.956277e-01,
+  HbA1c = 1.031427e-81,
+  Chol = 6.955116e-07,
+  TG = 4.386920e-08,
+  HDL = 6.524445e-01,
+  LDL = 7.348649e-01,
+  VLDL = 3.810216e-03,
+  BMI = 4.714323e-90
+)
+
+# Bind the data frames
+means_by_class1 <- bind_rows(means_by_class, additional_values_df)
+
+# View the updated means_by_class data frame
+print(means_by_class1)
+
+```
+
