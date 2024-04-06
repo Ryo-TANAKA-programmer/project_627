@@ -3,21 +3,21 @@
 format: pdf
 editor: visual
 ---
-  
-  # Hey Bright!! I got your message!
-  
+
+\# Hey Bright!! I got your message!
+
 ```{r}
 library(dplyr)
 library(tidyverse)
-library(leaps)
-library(rms)
-library(dplyr)
-library(MASS)
-library(glmnet)
-library(caret)
-library(boot)
-library(car)
-library(olsrr)
+#library(leaps)
+#library(rms)
+#library(dplyr)
+#library(MASS)
+#library(glmnet)
+#library(caret)
+#library(boot)
+#library(car)
+#library(olsrr)
 ```
 
 # data preparation
@@ -26,7 +26,7 @@ library(olsrr)
 
 setwd(getwd()) # setting working directory for users
 
-diabetes_data <- read_csv("/Users/laipoyu/Desktop/AU/SPRING_2024/STAT-627_4/Final/project_627/Dataset_of_Diabetes.csv")
+diabetes_data <- read_csv("Dataset_of_Diabetes.csv")
 str(diabetes_data)
 
 diabetes_data$BMI_Category <- cut(diabetes_data$BMI,
@@ -158,7 +158,127 @@ anova(full_reg,
 ```{r}
 names(summary_reduced_reg)
 ```
+## KNN
 
+```{r}
+library(class)
+library(caret) 
+
+set.seed(123)  
+index <- createDataPartition(diabetes_data$CLASS, p = 0.5, list = FALSE)
+train <- diabetes_data[index,]
+test <- diabetes_data[-index,]
+
+trainX <- scale(train[, c(4:11)])  
+testX <- scale(test[, c(4:11)], center = attr(trainX, "scaled:center"), scale = attr(trainX, "scaled:scale"))
+trainY <- train$CLASS
+testY <- test$CLASS
+
+k <- 5
+pred <- knn(train = trainX, test = testX, cl = trainY, k = k)
+
+# Evaluate the model
+confMat <- table(Predicted = pred, Actual = testY)
+print(confMat)
+accuracy <- sum(diag(confMat)) / sum(confMat)
+print(paste("Accuracy:", accuracy))
+```
+
+```{r}
+library(class)
+library(pROC)
+
+auc_values <- numeric()  # To store AUC values
+k_values <- 1:20  # Range of k values to test
+
+for(k in k_values) {
+  predicted_labels <- knn(train = trainX, test = testX, cl = trainY, k = k, prob = TRUE)
+  prob <- attr(predicted_labels, "prob")
+  prob_positive <- ifelse(predicted_labels == "P", prob, 1 - prob)
+  roc_obj <- roc(testY, prob_positive, levels = c("N", "P"))
+  auc_values[k] <- auc(roc_obj)
+}
+
+# Plot AUC values to see how they change with different k values
+plot(k_values, auc_values, type = "b", xlab = "k", ylab = "AUC",
+     main = "AUC vs. k for KNN")
+
+# Find the k with the highest AUC
+optimal_k <- which.max(auc_values)
+cat("Optimal value of k:", optimal_k, "\nHighest AUC:", auc_values[optimal_k])
+```
+
+```{r}
+
+set.seed(123)
+sample <- sample(c(TRUE, FALSE), nrow(diabetes), replace=TRUE, prob=c(0.5, 0.5))
+train_data <- diabetes[sample, ]
+test_data <- diabetes[-sample, ]
+x_train <- model.matrix(CLASS ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + HDL + LDL + VLDL + BMI + BMI_Category, data = train_data)[,-1] 
+y_train <- train_data$CLASS
+x_test <- model.matrix(CLASS ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + HDL + LDL + VLDL + BMI + BMI_Category, data = test_data)[,-1]
+y_test <- test_data$CLASS
+
+err_class <- rep(1:20)
+tpr <- rep(1:20)
+fpr <- rep(1:20)
+# run the loop
+for (k in 1:20) {
+  Yhat <- knn(x_train, x_test, y_train, k = k) 
+  err_class[k] <- mean(Yhat != y_test) # The prediction is not correct
+  tpr[k] <- sum(Yhat == 1 & y_test == 1) / sum(y_test == 1) # TP/P
+  fpr[k] <- sum(Yhat == 1 & y_test == 0) / sum(y_test == 0) # FP/N
+}
+
+ggplot(tibble(err_class, k = 1:20), aes(x = k, y = err_class)) +
+  geom_line()
+```
+
+```{r}
+which.min(err_class) # gives the k
+```
+
+```{r}
+err_class[which.min(err_class)] # Probability of a Mis-classification 
+```
+
+```{r}
+1 - err_class[which.min(err_class)] # Probability of a Correct Classification
+```
+
+```{r}
+# calculate the accuracy for the best k
+Yhat <-  knn(x_train, x_test, y_train, k = which.min(err_class)) 
+table(y_test, Yhat)
+```
+
+```{r}
+# Accuracy
+(table(y_test, Yhat)[1, 1] + table(y_test, Yhat)[2, 2])/((1-0.5)*nrow(diabetes_data))
+```
+
+```{r}
+Yhat <-  knn(x_train,x_test, y_train, k = 20) 
+table(y_test, Yhat) # the Confusion Matrix
+```
+
+```{r}
+# Accuracy
+(table(y_test, Yhat)[1, 1] + table(y_test, Yhat)[2, 2])/(.5*nrow(diabetes_data))
+```
+
+```{r}
+Yhat <-  knn(x_train, x_test, y_train, k = which.min(err_class)) 
+table(y_test, Yhat) # the Confusion Matrix
+```
+
+```{r}
+ggplot(tibble(tpr, fpr), aes(x = fpr, y = tpr)) +
+  geom_line() +
+  geom_abline(color = "red", lty = 3) +
+  ylim(0, 1) + xlim(0, 1) +
+  geom_hline(yintercept = mean(as.numeric(diabetes_data$CLASS)-1), color = "green", lty = 2)
+```
 ## AIC
 
 ```{r}
@@ -180,8 +300,8 @@ summary_subreg_reduced$adjr2
 summary_subreg_reduced$bic
 ```
 
-
 ## STEP WISE
+
 ```{r}
 fit.small <- glm(CLASS_BINARY~ 1,
                  family = "binomial",
@@ -209,6 +329,7 @@ test = "F")
 ```
 
 ## CI
+
 ```{r}
 model_matrix <- model.matrix(full_reg, data = diabetes)[,-1]
 standardized_model_matrix <- scale(model_matrix)
@@ -226,7 +347,9 @@ print(ci_with_names)
 
 # Low Condition Index (< 30) all of our predictors are fall within 30, unlikely to have multicollinearity.
 ```
+
 ## VIF
+
 ```{r}
 vif_values <- vif(full_reg)
 
@@ -239,6 +362,7 @@ vif_values
 ```
 
 ## Ridge and Lasso
+
 ```{r}
 library(caret)
 set.seed(123)
@@ -270,7 +394,7 @@ lasso_model <- glmnet(x_train, y_train, alpha = 1, lambda = opt_lambda_lasso, fa
 
 ```
 
-```{r} 
+```{r}
 # Evaluate Models
 
 
