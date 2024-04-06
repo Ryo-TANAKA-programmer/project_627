@@ -5,6 +5,12 @@ editor: visual
 ---
 
 \# Hey Bright!! I got your message!
+=======
+# Please **git pull** first before you edit the file!
+
+# Hey Bright!! I got your message!
+>>>>>>> c23e26e (adding uncommited changes)
+
 
 ```{r}
 library(dplyr)
