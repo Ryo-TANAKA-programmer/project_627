@@ -15,15 +15,14 @@ editor: visual
 ```{r}
 library(dplyr)
 library(tidyverse)
-#library(leaps)
-#library(rms)
-#library(dplyr)
-#library(MASS)
-#library(glmnet)
-#library(caret)
-#library(boot)
-#library(car)
-#library(olsrr)
+library(leaps)
+library(rms)
+library(MASS)
+library(glmnet)
+library(caret)
+library(boot)
+library(car)
+library(olsrr)
 ```
 
 # data preparation
@@ -41,16 +40,18 @@ diabetes_data$BMI_Category <- cut(diabetes_data$BMI,
 
 ```
 
-#Data Cleaning
+# Data Cleaning
 
 ```{r}
 ## checking consistency of the levels in "Gender", "CLASS","BMI_Category"
 unique_values <- lapply(diabetes_data[c("Gender", "CLASS","BMI_Category")], unique)
 unique_values
 
-## Fixing f = "F" and "N " = "N","Y "= "Y"
-diabetes <- diabetes_data %>%
-  mutate(across(c(3, 14), ~ recode(., "f" = "F", "N " = "N", "Y " = "Y")))
+# ## Fixing f = "F" and "N " = "N","Y "= "Y"
+# diabetes <- diabetes_data %>%
+#   mutate(across(c(3, 14), ~ recode(., "f" = "F", "N " = "N", "Y " = "Y")))
+
+diabetes <- diabetes_data
 
 unique_values1 <- lapply(diabetes[c("Gender", "CLASS","BMI_Category")], unique)
 unique_values1
@@ -69,7 +70,9 @@ p_only_diabetes <- diabetes %>%
 
 # make CLASS to 0 and 1
 diabetes <- diabetes %>%
-  mutate(CLASS_BINARY = if_else(CLASS == "Y", 1, 0))
+  mutate(CLASS_BINARY = if_else(CLASS == "Y" | CLASS == "P", 1, 0))
+
+diabetes$CLASS_BINARY <- as.factor(diabetes$CLASS_BINARY)
 ```
 
 # Summary of the entire Dataset
@@ -104,7 +107,7 @@ gg_base + geom_bar(mapping = aes(x = Gender,
 
 ```{r}
 gg_base + geom_bar(mapping = aes(x = Gender,
-                                 fill = CLASS),
+                                 fill = CLASS_BINARY),
                    position = "fill") +
   theme_bw()
 ```
@@ -144,7 +147,6 @@ plot(full_reg)
 
 ```{r}
 # Removing non-significant variables
-
 reduced_dia_reg <- glm(CLASS ~ Gender + HbA1c +
                          Chol + TG,
                        data = diabetes,
@@ -152,7 +154,6 @@ reduced_dia_reg <- glm(CLASS ~ Gender + HbA1c +
 summary(reduced_dia_reg)
 
 summary_reduced_reg <- summary(reduced_dia_reg)
-
 ```
 
 ```{r}
@@ -160,9 +161,6 @@ anova(full_reg,
       reduced_dia_reg)
 ```
 
-```{r}
-names(summary_reduced_reg)
-```
 ## KNN
 
 ```{r}
@@ -283,26 +281,6 @@ ggplot(tibble(tpr, fpr), aes(x = fpr, y = tpr)) +
   geom_abline(color = "red", lty = 3) +
   ylim(0, 1) + xlim(0, 1) +
   geom_hline(yintercept = mean(as.numeric(diabetes_data$CLASS)-1), color = "green", lty = 2)
-```
-## AIC
-
-```{r}
-AIC(reduced_dia_reg)
-AIC(full_reg)
-```
-
-```{r}
-
-```
-
-```{r}
-subreg_reduced <- regsubsets(CLASS ~ Gender + HbA1c + Chol + TG, 
-                             data = diabetes, 
-                             method = "exhaustive")
-summary_subreg_reduced <- summary(subreg_reduced)
-summary_subreg_reduced$cp
-summary_subreg_reduced$adjr2
-summary_subreg_reduced$bic
 ```
 
 ## STEP WISE
