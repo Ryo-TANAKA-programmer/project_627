@@ -184,6 +184,21 @@ DIA_test <- diabetes[-training,-ycol]
 DIA_test_results <- diabetes[-training,ycol] > 0.5
 ```
 
+### Creating a model for classification tree
+
+```{r}
+diabetes$CLASS_BINARY <- as.factor(diabetes$CLASS_BINARY)
+
+DIA_tree <- tree(CLASS_BINARY ~ Gender +
+                   HbA1c +
+                   Chol +
+                   TG +
+                   BMI,
+                 data = diabetes[training,])
+plot(DIA_tree)
+text(DIA_tree)
+```
+
 
 ## KNN
 
@@ -457,6 +472,7 @@ summary(fit.step.11p)
 library(GGally)
 ggpairs(diabetes[,-c(2,3,4,8,9,10,12,13)])
 ```
+
 ```{r}
 ggplot(diabetes, aes(BMI_Category,HbA1c, color = CLASS_BINARY)) +
   geom_jitter(size = .5)
@@ -474,7 +490,7 @@ ggplot(diabetes, aes(BMI_Category,Gender  , color = CLASS_BINARY)) +
 ```
 
 
--LDA
+## LDA
 ```{r}
 set.seed(123)
 n <- nrow(diabetes)
