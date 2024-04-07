@@ -187,6 +187,7 @@ DIA_test_results <- diabetes[-training,ycol] > 0.5
 ### Creating a model for classification tree
 
 ```{r}
+# Put this back to dinary
 diabetes$CLASS_BINARY <- as.factor(diabetes$CLASS_BINARY)
 
 DIA_tree <- tree(CLASS_BINARY ~ Gender +
@@ -198,6 +199,68 @@ DIA_tree <- tree(CLASS_BINARY ~ Gender +
 plot(DIA_tree)
 text(DIA_tree)
 ```
+
+```{r}
+# Obtains the proportions of 1's from the training set, in the tree endpoint for each data point in the test set
+
+DIA_tree_proportions <- predict(DIA_tree,
+                               diabetes[-training,])
+
+# Rounds each proportion to 0 or 1, obtaining the binary classifications
+DIA_tree_classifications <- round(x = DIA_tree_proportions,
+                                 digits = 0)
+
+# Computes the proportion of classifications on the test set that were correct
+sum(DIA_tree_classifications == DIA_test_results) / nrow(diabetes[-training,])
+
+sum(MV_tree_classifications == MV_test_results) / nrow(DC[-training_mv,])
+
+# The following command shows the classification confusion matrix for the test set
+table(DC.tree.classifications, DC.test.results)
+
+table(MV_tree_classifications,
+      MV_test_results)
+# To classify new data points, we first need to import the new data
+# Again, use the Files tab in the bottom right panel of RStudio, find DCExemptOrganizationsNew.csv
+# In this script, it was stored as "DCnew"
+
+# Then use the predict function to obtain the proportions
+predict(DC.tree,
+        DCnew)
+
+predict(MV_tree,
+        movies_new)
+
+# Alternatively, as we did with the test set, we can convert them to binary classifications
+round(predict(DC.tree,DCnew),0)
+
+round(predict(MV_tree,
+              movies_new),
+      digits = 0)
+
+
+best.mindev <- -1
+error.rate <- -1
+best.error.rate <- 99999999
+for (i in seq(from = 0.0005, 
+              to = 0.05, 
+              by = 0.0005)) {
+  DC.tree <- tree(DEDUCTIBLE ~ ., data=DC[training,], mindev=i)
+  DC.tree.proportions <- predict(DC.tree,DC[-training,])
+  DC.tree.classifications <- round(DC.tree.proportions,0)
+  error.rate <- 1- (sum(DC.tree.classifications == DC.test.results) / nrow(DC[-training,]))
+  if (error.rate < best.error.rate) {
+    best.mindev <- i
+    best.error.rate <- error.rate
+  }
+}
+print(paste("The optimal value of mindev is",best.mindev,"with an overall error rate of",best.error.rate))
+# The following commands re-create and plot the optimal tree
+DC.best.tree <- tree(DEDUCTIBLE ~ ., data=DC[training,], mindev=best.mindev)
+plot(DC.best.tree)
+text(DC.best.tree, cex=0.5)
+```
+
 
 
 ## KNN
