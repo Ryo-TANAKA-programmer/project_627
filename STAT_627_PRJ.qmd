@@ -297,6 +297,7 @@ fit.step.15p <- step(full_reg_BINARY,
                                   upper=full_reg_BINARY),
                      direction = "both",
 test = "F")
+summary(fit.step.15p)
 
 
 # last step has the best AIC which the best model is 
@@ -398,18 +399,68 @@ print(paste("Accuracy for Lasso Regression:", accuracy_lasso)) # 11% Accuracy ra
 
 # Bright Work
 
+- logistic regression
+```{r}
+
+full_reg_BINARY1 <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
+                         HDL + LDL + VLDL + BMI ,
+                       family = "binomial",
+                       data = diabetes)   # initial model
+summary(full_reg_BINARY1)
+
+vif_values <- vif(full_reg_BINARY1)
+
+vif_values
+
+reg_full_model <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
+                         HDL + LDL + VLDL + BMI ,
+                       family = "binomial",
+                       data = diabetes)
+reg_null_model <- glm(CLASS_BINARY ~ 1,family = "binomial", data = diabetes)
+
+fit.step.11p <- step(full_reg_BINARY1,
+                     scope = list(lower=reg_null_model,
+                                  upper=full_reg_BINARY1),
+                     direction = "both",
+test = "F")
+summary(fit.step.11p)
+```
+
+```{r}
+library(GGally)
+ggpairs(diabetes[,-c(2,3,4,8,9,10,12,13)])
+```
+```{r}
+ggplot(diabetes, aes(BMI_Category,HbA1c, color = CLASS_BINARY)) +
+  geom_jitter(size = .5)
+
+ggplot(diabetes, aes(BMI_Category,Chol, color = CLASS_BINARY)) +
+  geom_jitter(size = .5)
+
+ggplot(diabetes, aes(BMI_Category,TG  , color = CLASS_BINARY)) +
+  geom_jitter(size = .5)
+
+ggplot(diabetes, aes(BMI_Category,Gender  , color = CLASS_BINARY)) +
+  geom_jitter(size = .5)
+
+
+```
+
+
 -LDA
 ```{r}
 set.seed(123)
 n <- nrow(diabetes)
 Z <- sample(n, n/2)
+# 1st slipt
 Data_training = diabetes[Z, ]
 Data_testing = diabetes[-Z, ]
+# 2nd split
 Data_training2 = diabetes[Z, ]
 Data_testing2 = diabetes[-Z, ]
 
-
-lda_out <- lda(CLASS_BINARY~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + HDL + LDL + VLDL  + BMI_Category, data = Data_training) # don't need CV = TRUE
+# Using first set of the split
+lda_out <- lda(CLASS_BINARY ~ Gender + HbA1c + Chol + TG + BMI,data = Data_training) # don't need CV = TRUE
 
 Predicted.CLASS_lda  <-  predict(lda_out, data.frame(Data_testing))$class
 
@@ -422,13 +473,29 @@ round(mean(Predicted.CLASS_lda == "1"), 3)
 
 round(mean(Data_testing$CLASS_BINARY == "1"), 3)
 
+# Using first set of the split
+lda_out2 <- lda(CLASS_BINARY ~ Gender + HbA1c + Chol + TG + BMI,data = Data_training2) # don't need CV = TRUE
+
+Predicted.CLASS_lda2  <-  predict(lda_out2, data.frame(Data_testing2))$class
+
+table(Data_testing2$CLASS_BINARY, Predicted.CLASS_lda2)
+
+# Prediction Correct Classification Rate
+round(mean(Data_testing2$CLASS_BINARY == Predicted.CLASS_lda2), 3)
+
+round(mean(Predicted.CLASS_lda2 == "1"), 3)
+
+round(mean(Data_testing2$CLASS_BINARY == "1"), 3)
+
+
+
 
 ```
 
 QDA
 
 ```{r}
-qda_out <- qda(CLASS_BINARY ~ AGE , data = Data_training) # don't need CV = TRUE
+qda_out <- qda(CLASS_BINARY ~ Gender + HbA1c + Chol + TG + BMI,data = Data_training) # don't need CV = TRUE
 
 Predicted.CLASS_qda  <-  predict(qda_out, data.frame(Data_training))$class
 
@@ -438,9 +505,84 @@ table(Data_training$CLASS_BINARY, Predicted.CLASS_qda)
 qda_ccr <- round(mean(Data_testing$CLASS_BINARY == Predicted.CLASS_qda), 3)
 qda_ccr
 
+round(mean(Predicted.CLASS_qda == "1"), 3)
+
+round(mean(Data_testing$CLASS_BINARY == "1"), 3)
+
 
 
 ```
+
+- logistic classication
+```{r}
+lreg_fit <-  glm(CLASS_BINARY ~ Gender + HbA1c + Chol + TG + BMI, 
+    family = "binomial", data = Data_training)
+summary(lreg_fit)
+
+lreg_fit2 <-  glm(CLASS_BINARY ~ Gender + HbA1c + Chol + TG + BMI, 
+    family = "binomial", data = Data_training2)
+summary(lreg_fit)
+
+
+
+Predicted_probability <- predict(lreg_fit, data.frame(Data_testing),
+                                 type = "response")
+Predicted_probability2 <- predict(lreg_fit2, data.frame(Data_testing2),
+                                 type = "response")
+Predicted_diabetic = Predicted_probability > 0.5
+Predicted_diabetic2 = Predicted_probability2 > 0.5
+
+table(Data_testing$CLASS_BINARY, Predicted_diabetic)
+
+table(Data_testing$CLASS_BINARY, Predicted_diabetic2)
+
+# Prediction Correct Classification Rate
+log_ccr <- mean(Data_testing$CLASS_BINARY == Predicted_diabetic)
+log_ccr
+
+
+log_ccr2 <- mean(Data_testing$CLASS_BINARY == Predicted_diabetic2)
+log_ccr2
+
+
+
+```
+```{r}
+
+Prob <- predict(lreg_fit, data.frame(Data_testing),
+                                 type = "response")
+threshold <- seq(0, 1, .01)
+length(threshold)
+
+head(threshold)
+
+TPR <-  FPR <- err.rate <- rep(0, length(threshold))
+
+for (i in seq_along(threshold)) {
+Yhat <- rep(NA_character_, nrow(diabetes[Z,])) 
+Yhat <-  ifelse(Prob >= threshold[[i]], "1", "0")
+
+err.rate[i] <- mean(Yhat != diabetes[Z,]$CLASS_BINARY)
+TPR[[i]] <- sum(Yhat == "yes" & diabetes[Z,]$CLASS_BINARY == "1") /
+  sum(diabetes[Z,]$CLASS_BINARY == "1")
+FPR[[i]] <- sum(Yhat == "1" & diabetes[Z,]$CLASS_BINARY == "0") /
+  sum(diabetes[Z,]$CLASS_BINARY == "no")
+
+}
+
+ggplot(tibble(threshold, err.rate),
+       aes(threshold, err.rate)) + 
+  geom_point()
+
+which.min(err.rate)
+
+threshold[0]
+
+min(err.rate)
+
+
+```
+
 
 
 
@@ -448,7 +590,7 @@ qda_ccr
 ```{r}
   
 data_test<- diabetes%>%
-  select(-Gender,-BMI_Category)
+  select(-c(Gender,BMI_Category))
 
 # Assuming Clean_data is your dataframe and CLASS is the grouping variable
 
