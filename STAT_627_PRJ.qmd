@@ -19,9 +19,10 @@ library(caret)
 library(boot)
 library(car)
 library(olsrr)
+library(tree)
 ```
 
-# Data preparation
+## Data preparation
 
 ```{r}
 
@@ -36,7 +37,7 @@ diabetes_data$BMI_Category <- cut(diabetes_data$BMI,
 str(diabetes_data)
 ```
 
-# Data Cleaning
+## Data Cleaning
 
 ```{r}
 ## checking consistency of the levels in "Gender", "CLASS","BMI_Category"
@@ -67,7 +68,7 @@ diabetes <- diabetes %>%
 diabetes$CLASS_BINARY <- as.factor(diabetes$CLASS_BINARY)
 ```
 
-# Summary of the entire Dataset
+## Summary of the entire Dataset
 
 ```{r}
 summary(diabetes)
@@ -163,6 +164,40 @@ diabetes_1 <- drop_na(diabetes,
 
 cv.glm(diabetes_1, reduced_dia_reg)$delta
 ```
+
+## Tree
+
+```{r}
+# The following command will randomly select 60% of the row numbers in the data set to represent the training data
+training <- sample(1:nrow(diabetes), 
+                   0.6*nrow(diabetes))
+
+# finds the column number of the dependent variable by its name.
+ycol <- match('CLASS_BINARY',
+              colnames(diabetes))
+
+# The following two commands separate the training data into two variables, one with DEDUCTIBLE removed, and one containing only DEDUCTIBLE
+# Note that the second one is different from what we did for kNN for prediction; we want to store the results as binary variables, not integers
+DC.training <- DC[training,-ycol]
+DC.training.results <- DC[training,ycol] > 0.5
+
+MV_training <- MV[training_mv,
+                  -ycol]
+
+MV_training_results <- MV[training_mv,
+                          ycol] > 0.5
+
+# The following two commands do the same for the remaining 40% of the data
+# Here, again, the second command stores the results as binary variables
+DC.test <- DC[-training,-ycol]
+DC.test.results <- DC[-training,ycol] > 0.5
+
+MV_test <- MV[-training_mv,
+              -ycol]
+
+MV_test_results <- MV[-training_mv,ycol] > 0.5
+```
+
 
 ## KNN
 
