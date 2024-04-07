@@ -158,6 +158,18 @@ anova(full_reg,
       reduced_dia_reg)
 ```
 
+```{r}
+diabetes_1 <- drop_na(diabetes,
+                    CLASS,
+                    Gender,
+                    HbA1c,
+                    Chol,
+                    TG)
+
+cv.glm(diabetes_1, reduced_dia_reg)$delta
+```
+
+
 ## KNN
 
 ```{r}
