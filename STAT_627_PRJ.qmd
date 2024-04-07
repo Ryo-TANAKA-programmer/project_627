@@ -8,10 +8,6 @@ editor: visual
 =======
 # Please **git pull** first before you edit the file!
 
-# Hey Bright!! I got your message!
->>>>>>> c23e26e (adding uncommited changes)
-
-
 ```{r}
 library(dplyr)
 library(tidyverse)
@@ -25,7 +21,7 @@ library(car)
 library(olsrr)
 ```
 
-# data preparation
+# Data preparation
 
 ```{r}
 
@@ -38,7 +34,6 @@ diabetes_data$BMI_Category <- cut(diabetes_data$BMI,
                                   breaks = c(-Inf, 18.5, 24.9, 29.9, Inf),
                                   labels = c("Underweight", "Normal", "Overweight", "Obese"))
 str(diabetes_data)
-
 ```
 
 # Data Cleaning
@@ -168,7 +163,6 @@ diabetes_1 <- drop_na(diabetes,
 
 cv.glm(diabetes_1, reduced_dia_reg)$delta
 ```
-
 
 ## KNN
 
