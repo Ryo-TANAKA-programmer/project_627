@@ -64,8 +64,6 @@ diabetes <- diabetes[-c(1,2,16)]
 # make CLASS to 0 and 1
 diabetes <- diabetes %>%
   mutate(CLASS_BINARY = if_else(CLASS == "Y" | CLASS == "P", 1, 0))
-
-diabetes$CLASS_BINARY <- as.factor(diabetes$CLASS_BINARY)
 ```
 
 ## Summary of the entire Dataset
@@ -80,13 +78,6 @@ BMI_summary <- diabetes %>%
   group_by(Gender, BMI_Category) %>%
   summarise(Count = n(), .groups = 'drop')
 BMI_summary
-```
-
-```{r}
-# Making CLASS factor
-diabetes <- diabetes %>% 
-  mutate(CLASS = as.factor(CLASS))
-is.factor(diabetes$CLASS)
 ```
 
 ```{r}
@@ -176,26 +167,21 @@ training <- sample(1:nrow(diabetes),
 ycol <- match('CLASS_BINARY',
               colnames(diabetes))
 
-# The following two commands separate the training data into two variables, one with DEDUCTIBLE removed, and one containing only DEDUCTIBLE
-# Note that the second one is different from what we did for kNN for prediction; we want to store the results as binary variables, not integers
-DC.training <- DC[training,-ycol]
-DC.training.results <- DC[training,ycol] > 0.5
+# separate the training data into two variables, one with CLASS_BINARY removed, and one containing only CLASS_BINARY
 
-MV_training <- MV[training_mv,
-                  -ycol]
+DIA_training <- diabetes[training,-ycol]
 
-MV_training_results <- MV[training_mv,
-                          ycol] > 0.5
+# For this purpose, converting diabetes$CLASS_BINARY into double
+# diabetes$CLASS_BINARY <- as.numeric(diabetes$CLASS_BINARY)
+# typeof(diabetes$CLASS_BINARY)
 
-# The following two commands do the same for the remaining 40% of the data
+DIA_training_results <- diabetes[training,
+                                 ycol] > 0.5
+
+# Do the same for the remaining 40% of the data
 # Here, again, the second command stores the results as binary variables
-DC.test <- DC[-training,-ycol]
-DC.test.results <- DC[-training,ycol] > 0.5
-
-MV_test <- MV[-training_mv,
-              -ycol]
-
-MV_test_results <- MV[-training_mv,ycol] > 0.5
+DIA_test <- diabetes[-training,-ycol]
+DIA_test_results <- diabetes[-training,ycol] > 0.5
 ```
 
 
