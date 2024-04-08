@@ -91,7 +91,7 @@ gg_base + geom_bar(mapping = aes(x = Gender,
 
 ```{r}
 gg_base + geom_bar(mapping = aes(x = Gender,
-                                 fill = CLASS_BINARY),
+                                 fill = as.factor(CLASS_BINARY)),
                    position = "fill") +
   theme_bw()
 ```
@@ -159,6 +159,11 @@ cv.glm(diabetes_1, reduced_dia_reg)$delta
 ## Tree
 
 ```{r}
+diabetes <- diabetes %>% 
+  mutate(Gender = if_else(diabetes$Gender == "M",1,0))
+diabetes$Gender <- as.factor(diabetes$Gender)
+
+
 # The following command will randomly select 60% of the row numbers in the data set to represent the training data
 training <- sample(1:nrow(diabetes), 
                    0.6*nrow(diabetes))
@@ -168,7 +173,7 @@ ycol <- match('CLASS_BINARY',
               colnames(diabetes))
 
 # separate the training data into two variables, one with CLASS_BINARY removed, and one containing only CLASS_BINARY
-
+set.seed(1234)
 DIA_training <- diabetes[training,-ycol]
 
 # For this purpose, converting diabetes$CLASS_BINARY into double
@@ -181,7 +186,9 @@ DIA_training_results <- diabetes[training,
 # Do the same for the remaining 40% of the data
 # Here, again, the second command stores the results as binary variables
 DIA_test <- diabetes[-training,-ycol]
-DIA_test_results <- diabetes[-training,ycol] > 0.5
+
+DIA_test_results <- diabetes[-training,
+                             ycol] > 0.5
 ```
 
 ### Creating a model for classification tree
@@ -190,11 +197,7 @@ DIA_test_results <- diabetes[-training,ycol] > 0.5
 # Put this back to dinary
 diabetes$CLASS_BINARY <- as.factor(diabetes$CLASS_BINARY)
 
-DIA_tree <- tree(CLASS_BINARY ~ Gender +
-                   HbA1c +
-                   Chol +
-                   TG +
-                   BMI,
+DIA_tree <- tree(CLASS_BINARY ~ .,
                  data = diabetes[training,])
 plot(DIA_tree)
 text(DIA_tree)
