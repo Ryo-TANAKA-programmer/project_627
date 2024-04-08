@@ -33,7 +33,11 @@ diabetes_data <- read_csv("Dataset_of_Diabetes.csv")
 
 diabetes_data$BMI_Category <- cut(diabetes_data$BMI,
                                   breaks = c(-Inf, 18.5, 24.9, 29.9, Inf),
-                                  labels = c("Underweight", "Normal", "Overweight", "Obese"))
+                                  labels = c(0,1,2,3))
+
+# diabetes_data$BMI_Category <- cut(diabetes_data$BMI,
+#                                   breaks = c(-Inf, 18.5, 24.9, 29.9, Inf),
+#                                   labels = c("Underweight", "Normal", "Overweight", "Obese"))
 str(diabetes_data)
 ```
 
@@ -57,13 +61,16 @@ diabetes <- diabetes %>%
   mutate(
     missing_count_SPS = rowSums(is.na(.[1:15])))
 
-# Removing `P` in CLASS variable, ID and No.partition since we don't need them
+# Removing ID and No.partition and missing_count since we don't need them
 diabetes <- diabetes[-c(1,2,16)]
 
 
 # make CLASS to 0 and 1
 diabetes <- diabetes %>%
   mutate(CLASS_BINARY = if_else(CLASS == "Y" | CLASS == "P", 1, 0))
+
+# Converting CLASS_BINARY
+diabetes$CLASS_BINARY <- as.factor(diabetes$CLASS_BINARY)
 ```
 
 ## Summary of the entire Dataset
@@ -123,6 +130,10 @@ pairs(diabetes_numeric_df)
 ```{r}
 diabetes$Gender <- as.factor(diabetes$Gender)
 is.factor(diabetes$Gender)
+diabetes <- diabetes %>%
+  mutate(Gender = if_else(Gender == "F",0,1))
+diabetes$Gender <- as.factor(diabetes$Gender)
+
 full_reg <- glm(CLASS ~ .,
                 family = "binomial",
                 data = diabetes)
@@ -167,31 +178,39 @@ diabetes <- diabetes %>%
   mutate(Gender = if_else(diabetes$Gender == "M",1,0))
 diabetes$Gender <- as.factor(diabetes$Gender)
 
+# removed BMI and CLASS since we now have categorical variables 
+diabetes_tree <- diabetes[-c(11,12)]
 
 # The following command will randomly select 60% of the row numbers in the data set to represent the training data
-training <- sample(1:nrow(diabetes), 
-                   0.6*nrow(diabetes))
+training <- sample(1:nrow(diabetes_tree), 
+                   0.6*nrow(diabetes_tree))
 
 # finds the column number of the dependent variable by its name.
 ycol <- match('CLASS_BINARY',
-              colnames(diabetes))
+              colnames(diabetes_tree))
 
 # separate the training data into two variables, one with CLASS_BINARY removed, and one containing only CLASS_BINARY
 set.seed(1234)
-DIA_training <- diabetes[training,-ycol]
+DIA_training <- diabetes_tree[training,-ycol]
 
 # For this purpose, converting diabetes$CLASS_BINARY into double
 # diabetes$CLASS_BINARY <- as.numeric(diabetes$CLASS_BINARY)
-# typeof(diabetes$CLASS_BINARY)
+diabetes_tree$CLASS_BINARY <- as.numeric(diabetes$CLASS_BINARY)
 
-DIA_training_results <- diabetes[training,
-                                 ycol] > 0.5
+diabetes_tree <- diabetes_tree %>% 
+  mutate(CLASS_BINARY = if_else(diabetes_tree$CLASS_BINARY == 1,
+                                0,
+                                1))
+typeof(diabetes$CLASS_BINARY)
+
+DIA_training_results <- diabetes_tree[training,
+                                      ycol] > 0.5
 
 # Do the same for the remaining 40% of the data
 # Here, again, the second command stores the results as binary variables
-DIA_test <- diabetes[-training,-ycol]
+DIA_test <- diabetes_tree[-training,-ycol]
 
-DIA_test_results <- diabetes[-training,
+DIA_test_results <- diabetes_tree[-training,
                              ycol] > 0.5
 ```
 
@@ -202,7 +221,7 @@ DIA_test_results <- diabetes[-training,
 diabetes$CLASS_BINARY <- as.factor(diabetes$CLASS_BINARY)
 
 DIA_tree <- tree(CLASS_BINARY ~ .,
-                 data = diabetes[training,])
+                 data = diabetes_tree[training,])
 plot(DIA_tree)
 text(DIA_tree)
 ```
@@ -211,7 +230,7 @@ text(DIA_tree)
 # Obtains the proportions of 1's from the training set, in the tree endpoint for each data point in the test set
 
 DIA_tree_proportions <- predict(DIA_tree,
-                               diabetes[-training,])
+                               diabetes_tree[-training,])
 
 # Rounds each proportion to 0 or 1, obtaining the binary classifications
 DIA_tree_classifications <- round(x = DIA_tree_proportions,
@@ -220,13 +239,11 @@ DIA_tree_classifications <- round(x = DIA_tree_proportions,
 # Computes the proportion of classifications on the test set that were correct
 sum(DIA_tree_classifications == DIA_test_results) / nrow(diabetes[-training,])
 
-sum(MV_tree_classifications == MV_test_results) / nrow(DC[-training_mv,])
-
 # The following command shows the classification confusion matrix for the test set
-table(DC.tree.classifications, DC.test.results)
+table(DIA_tree_classifications, DIA_test_results)
 
-table(MV_tree_classifications,
-      MV_test_results)
+## -- we might not need them..
+
 # To classify new data points, we first need to import the new data
 # Again, use the Files tab in the bottom right panel of RStudio, find DCExemptOrganizationsNew.csv
 # In this script, it was stored as "DCnew"
@@ -245,6 +262,8 @@ round(predict(MV_tree,
               movies_new),
       digits = 0)
 
+## --- to this point
+
 
 best.mindev <- -1
 error.rate <- -1
@@ -252,22 +271,29 @@ best.error.rate <- 99999999
 for (i in seq(from = 0.0005, 
               to = 0.05, 
               by = 0.0005)) {
-  DC.tree <- tree(DEDUCTIBLE ~ ., data=DC[training,], mindev=i)
-  DC.tree.proportions <- predict(DC.tree,DC[-training,])
-  DC.tree.classifications <- round(DC.tree.proportions,0)
-  error.rate <- 1- (sum(DC.tree.classifications == DC.test.results) / nrow(DC[-training,]))
+  DIA_tree <- tree(CLASS_BINARY ~ .,
+                   data = diabetes_tree[training,],
+                   mindev = i)
+  DIA_tree_proportions <- predict(DIA_tree,
+                                  diabetes_tree[-training,])
+  DIA_tree_classifications <- round(DIA_tree_proportions,
+                                    0)
+  error.rate <- 1- (sum(DIA_tree_classifications == DIA_test_results) / nrow(diabetes_tree[-training,]))
   if (error.rate < best.error.rate) {
     best.mindev <- i
     best.error.rate <- error.rate
   }
 }
-print(paste("The optimal value of mindev is",best.mindev,"with an overall error rate of",best.error.rate))
-# The following commands re-create and plot the optimal tree
-DC.best.tree <- tree(DEDUCTIBLE ~ ., data=DC[training,], mindev=best.mindev)
-plot(DC.best.tree)
-text(DC.best.tree, cex=0.5)
-```
 
+print(paste("The optimal value of mindev is",best.mindev,"with an overall error rate of",best.error.rate))
+
+# The following commands re-create and plot the optimal tree
+DIA_BEST_TREE <- tree(CLASS_BINARY ~ ., 
+                      data = diabetes_tree[training,], 
+                      mindev = best.mindev)
+plot(DIA_BEST_TREE)
+text(DIA_BEST_TREE, cex=0.5)
+```
 
 
 ## KNN
