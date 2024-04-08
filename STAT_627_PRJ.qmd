@@ -86,14 +86,18 @@ gg_base <- ggplot(data = diabetes)
 gg_base + geom_bar(mapping = aes(x = Gender,
                                  fill = BMI_Category),
                    position = "fill") +
-  theme_bw()
+  theme_bw() +
+  labs(y = "Pencentage",
+       fill = "BMI Category")
 ```
 
 ```{r}
 gg_base + geom_bar(mapping = aes(x = Gender,
                                  fill = as.factor(CLASS_BINARY)),
                    position = "fill") +
-  theme_bw()
+  theme_bw() + 
+  labs(y = "Pencentage",
+       fill = "Diabetes") 
 ```
 
 ```{r}
