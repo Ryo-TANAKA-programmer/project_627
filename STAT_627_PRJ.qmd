@@ -30,7 +30,8 @@ setwd(getwd()) # setting working directory for users
 
 diabetes_data <- read_csv("Dataset_of_Diabetes.csv")
 
-
+# To make Tree, I converted BMI into factor-based variable
+# 1: Underweight, 2: Normal, 3: Overweight 4: Obese
 diabetes_data$BMI_Category <- cut(diabetes_data$BMI,
                                   breaks = c(-Inf, 18.5, 24.9, 29.9, Inf),
                                   labels = c(0,1,2,3))
@@ -58,12 +59,10 @@ unique_values1 <- lapply(diabetes[c("Gender", "CLASS","BMI_Category")], unique)
 
 # checking incomplete obs
 diabetes <- diabetes %>%
-  mutate(
-    missing_count_SPS = rowSums(is.na(.[1:15])))
+  mutate(missing_count_SPS = rowSums(is.na(.[1:15])))
 
-# Removing ID and No.partition and missing_count since we don't need them
+# Removing ID and Patient Number and missing_count since we don't need them
 diabetes <- diabetes[-c(1,2,16)]
-
 
 # make CLASS to 0 and 1
 diabetes <- diabetes %>%
