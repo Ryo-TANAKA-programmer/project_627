@@ -87,6 +87,8 @@ BMI_summary
 ```
 
 ```{r}
+# 1: Underweight, 2: Normal, 3: Overweight 4: Obese
+
 gg_base <- ggplot(data = diabetes) 
 
 gg_base + geom_bar(mapping = aes(x = Gender,
