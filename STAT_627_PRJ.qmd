@@ -281,7 +281,7 @@ DIA_KNN_test_results <- diabetes_knn[-training,ycol] > 0.5
 DIA_knn <- knn(DIA_KNN_training, 
                DIA_KNN_test, 
                DIA_KNN_training_results,
-               k = 9)
+               k = 8)
 
 # The following command computes the proportion of classifications on the test set that were correct
 1 - sum(DIA_knn == DIA_KNN_test_results) / length(DIA_KNN_test_results)
@@ -306,9 +306,40 @@ for (i in 1:100) {
 
 print(paste("The optimal value of k is",best.k,"with an overall error rate of",best.error.rate))
 ```
+## Ryo: LOOCV
+
+```{r}
+diabetes_LOOCV <- diabetes[-c(11,12)]
+
+```
+## Ryo is working on LOOCV using Beau's
+
+```{r}
+# I'm still editing this code
+full_reg_BINARY_LOOCV <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
+                         HDL + LDL + VLDL + BMI_Category,
+                       family = "binomial",
+                       data = diabetes_LOOCV)   # initial model
+
+cv_result <- cv.glm(diabetes, 
+                    full_reg_BINARY, 
+                    K = nrow(diabetes))
+
+test.mse.loo <- cv_result$delta[1]
+test.rmse.loo <- sqrt(test.mse.loo)
+test.error.loocv <- cbind("MSE" = test.mse.loo, "RMSE" = test.rmse.loo)
+test.error.loocv
+
+test.mse.loo <- cv.glm(diabetes_LOOCV, 
+                       full_reg_BINARY_LOOCV)$delta[1] 
+
+test.rmse.loo <- sqrt(test.mse.loo) 
+test.error.loocv <- cbind("MSE" = test.mse.loo,"RMSE" = test.rmse.loo)
+test.error.loocv
+```
 
 
-## KNN
+## Sheila: KNN
 
 ```{r}
 library(class)
@@ -430,7 +461,7 @@ ggplot(tibble(tpr, fpr), aes(x = fpr, y = tpr)) +
   geom_hline(yintercept = mean(as.numeric(diabetes_data$CLASS)-1), color = "green", lty = 2)
 ```
 
-## STEP WISE
+## Beau: STEP WISE
 
 ```{r}
 fit.small <- glm(CLASS_BINARY~ 1,
@@ -446,17 +477,17 @@ fit.step.15p <- step(full_reg_BINARY,
                      scope = list(lower=fit.small,
                                   upper=full_reg_BINARY),
                      direction = "both",
-test = "F")
+                     test = "F")
 summary(fit.step.15p)
 
 
 # last step has the best AIC which the best model is 
-#Gender
-#HbA1c
-#Chol (Cholesterol)
-#TG (Triglycerides)
-#BMI (Body Mass Index)
-#BMI_Category                             with response variable CLASS_BINARY
+# Gender
+# HbA1c
+# Chol (Cholesterol)
+# TG (Triglycerides)
+# BMI (Body Mass Index)
+# BMI_Category                             with response variable CLASS_BINARY
 ```
 
 ## CI
