@@ -20,6 +20,7 @@ library(boot)
 library(car)
 library(olsrr)
 library(tree)
+library(FNN)
 ```
 
 ## Data preparation
@@ -135,44 +136,7 @@ is.factor(diabetes$Gender)
 diabetes <- diabetes %>%
   mutate(Gender = if_else(Gender == "F",0,1))
 diabetes$Gender <- as.factor(diabetes$Gender)
-
-full_reg <- glm(CLASS ~ .,
-                family = "binomial",
-                data = diabetes)
-summary(full_reg) 
 ```
-
-```{r}
-plot(full_reg)
-```
-
-```{r}
-# Removing non-significant variables
-reduced_dia_reg <- glm(CLASS ~ Gender + HbA1c +
-                         Chol + TG,
-                       data = diabetes,
-                       family = "binomial")
-summary(reduced_dia_reg)
-
-summary_reduced_reg <- summary(reduced_dia_reg)
-```
-
-```{r}
-anova(full_reg,
-      reduced_dia_reg)
-```
-
-```{r}
-diabetes_1 <- drop_na(diabetes,
-                    CLASS,
-                    Gender,
-                    HbA1c,
-                    Chol,
-                    TG)
-
-cv.glm(diabetes_1, reduced_dia_reg)$delta
-```
-
 ## Tree
 
 ```{r}
@@ -244,29 +208,6 @@ sum(DIA_tree_classifications == DIA_test_results) / nrow(diabetes[-training,])
 # The following command shows the classification confusion matrix for the test set
 table(DIA_tree_classifications, DIA_test_results)
 
-## -- we might not need them..
-
-# To classify new data points, we first need to import the new data
-# Again, use the Files tab in the bottom right panel of RStudio, find DCExemptOrganizationsNew.csv
-# In this script, it was stored as "DCnew"
-
-# Then use the predict function to obtain the proportions
-predict(DC.tree,
-        DCnew)
-
-predict(MV_tree,
-        movies_new)
-
-# Alternatively, as we did with the test set, we can convert them to binary classifications
-round(predict(DC.tree,DCnew),0)
-
-round(predict(MV_tree,
-              movies_new),
-      digits = 0)
-
-## --- to this point
-
-
 best.mindev <- -1
 error.rate <- -1
 best.error.rate <- 99999999
@@ -296,6 +237,76 @@ DIA_BEST_TREE <- tree(CLASS_BINARY ~ .,
 plot(DIA_BEST_TREE)
 text(DIA_BEST_TREE, cex=0.5)
 ```
+
+## Ryo: KNN
+
+```{r}
+# removed BMI and CLASS since we now have categorical variables 
+diabetes_knn <- diabetes[-c(11,12)]
+diabetes_knn$Gender <- as.numeric(diabetes_knn$Gender)
+diabetes_knn$BMI_Category <- as.numeric(diabetes_knn$BMI_Category)
+diabetes_knn$CLASS_BINARY <- as.numeric(diabetes_knn$CLASS_BINARY)
+
+# no 1 confirmed: diabetes_knn$BMI_Category[diabetes_knn$BMI_Category == 1] <- 0
+diabetes_knn$BMI_Category[diabetes_knn$BMI_Category == 2] <- 1
+diabetes_knn$BMI_Category[diabetes_knn$BMI_Category == 3] <- 2
+diabetes_knn$BMI_Category[diabetes_knn$BMI_Category == 4] <- 3
+
+# Re-labelling here for CLASS_BINARY
+diabetes_knn$CLASS_BINARY[diabetes_knn$CLASS_BINARY == 1] <- 0
+diabetes_knn$CLASS_BINARY[diabetes_knn$CLASS_BINARY == 2] <- 1
+
+
+# The following command will randomly select 60% of the row numbers in the data set to represent the training data
+training <- sample(1:nrow(diabetes_knn), 
+                   0.5*nrow(diabetes_knn))
+
+# finds the column number of the dependent variable by its name.
+ycol <- match('CLASS_BINARY',
+              colnames(diabetes_knn))
+
+# separate the training data into two variables, one with CLASS_BINARY removed, and one containing only CLASS_BINARY
+set.seed(1234)
+DIA_KNN_training <- diabetes_knn[training,-ycol]
+DIA_KNN_training_results <- diabetes_knn[training,ycol] > 0.5
+
+# Do the same for the remaining 40% of the data
+# Here, again, the second command stores the results as binary variables
+DIA_KNN_test <- diabetes_knn[-training,-ycol]
+
+DIA_KNN_test_results <- diabetes_knn[-training,ycol] > 0.5
+
+
+# The following command runs the k-nearest neighbors model with k=5
+DIA_knn <- knn(DIA_KNN_training, 
+               DIA_KNN_test, 
+               DIA_KNN_training_results,
+               k = 9)
+
+# The following command computes the proportion of classifications on the test set that were correct
+1 - sum(DIA_knn == DIA_KNN_test_results) / length(DIA_KNN_test_results)
+
+# The following command shows the classification confusion matrix for the test set.
+table(DIA_knn, DIA_KNN_test_results)
+
+best.k <- -1
+error.rate <- -1
+best.error.rate <- 99999
+for (i in 1:100) {
+  set.seed(1234)
+  
+  DIA_len_knn <- knn(DIA_KNN_training, DIA_KNN_test, DIA_KNN_training_results, k = i)
+  
+  error.rate <- 1 - (sum(DIA_len_knn == DIA_KNN_test_results) / length(DIA_KNN_test_results))
+  if (error.rate < best.error.rate) {
+    best.k <- i
+    best.error.rate <- error.rate
+  }
+}
+
+print(paste("The optimal value of k is",best.k,"with an overall error rate of",best.error.rate))
+```
+
 
 ## KNN
 
