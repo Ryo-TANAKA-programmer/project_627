@@ -4,8 +4,8 @@ format: pdf
 editor: visual
 ---
 
-\# Hey Bright!! I got your message!
-=======
+# Hey Bright!! I got your message!
+
 # Please **git pull** first before you edit the file!
 
 ```{r}
@@ -296,7 +296,6 @@ plot(DIA_BEST_TREE)
 text(DIA_BEST_TREE, cex=0.5)
 ```
 
-
 ## KNN
 
 ```{r}
@@ -535,10 +534,10 @@ print(paste("Accuracy for Ridge Regression:", accuracy_ridge)) # 88% Accuracy ra
 print(paste("Accuracy for Lasso Regression:", accuracy_lasso)) # 11% Accuracy rate
 ```
 
-
 # Bright Work
 
-- logistic regression
+-   logistic regression
+
 ```{r}
 
 full_reg_BINARY1 <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
@@ -586,8 +585,8 @@ ggplot(diabetes, aes(BMI_Category,Gender  , color = CLASS_BINARY)) +
 
 ```
 
-
 ## LDA
+
 ```{r}
 set.seed(123)
 n <- nrow(diabetes)
@@ -653,7 +652,8 @@ round(mean(Data_testing$CLASS_BINARY == "1"), 3)
 
 ```
 
-- logistic classication
+-   logistic classication
+
 ```{r}
 lreg_fit <-  glm(CLASS_BINARY ~ Gender + HbA1c + Chol + TG + BMI, 
     family = "binomial", data = Data_training)
@@ -688,6 +688,7 @@ log_ccr2
 
 
 ```
+
 ```{r}
 
 Prob <- predict(lreg_fit, data.frame(Data_testing),
@@ -724,10 +725,8 @@ min(err.rate)
 
 ```
 
-
-
-
 # Apendix
+
 ```{r}
   
 data_test<- diabetes%>%
@@ -786,4 +785,3 @@ means_by_class1 <- bind_rows(means_by_class, additional_values_df)
 print(means_by_class1)
 
 ```
-
