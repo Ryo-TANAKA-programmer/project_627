@@ -137,6 +137,7 @@ diabetes <- diabetes %>%
   mutate(Gender = if_else(Gender == "F",0,1))
 diabetes$Gender <- as.factor(diabetes$Gender)
 ```
+
 ## Tree
 
 ```{r}
@@ -306,39 +307,92 @@ for (i in 1:100) {
 
 print(paste("The optimal value of k is",best.k,"with an overall error rate of",best.error.rate))
 ```
+
 ## Ryo: LOOCV
 
 ```{r}
 diabetes_LOOCV <- diabetes[-c(11,12)]
 
 ```
-## Ryo is working on LOOCV using Beau's
+
+## Ryo and Beau is working on LOOCV using Logistic Regression
 
 ```{r}
-# I'm still editing this code
+# probably works?
 full_reg_BINARY_LOOCV <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
                          HDL + LDL + VLDL + BMI_Category,
                        family = "binomial",
-                       data = diabetes_LOOCV)   # initial model
+                       data = diabetes)   # initial model
 
-cv_result <- cv.glm(diabetes, 
-                    full_reg_BINARY, 
-                    K = nrow(diabetes))
+cv_loocv <- cv.glm(diabetes, full_reg_BINARY_LOOCV, K = nrow(diabetes))
 
-test.mse.loo <- cv_result$delta[1]
-test.rmse.loo <- sqrt(test.mse.loo)
-test.error.loocv <- cbind("MSE" = test.mse.loo, "RMSE" = test.rmse.loo)
-test.error.loocv
+loocv_error <- cv_loocv$delta[1]
 
-test.mse.loo <- cv.glm(diabetes_LOOCV, 
-                       full_reg_BINARY_LOOCV)$delta[1] 
-
-test.rmse.loo <- sqrt(test.mse.loo) 
-test.error.loocv <- cbind("MSE" = test.mse.loo,"RMSE" = test.rmse.loo)
-test.error.loocv
+# Print the LOOCV prediction error
+print(paste("LOOCV Prediction Error:", loocv_error))
 ```
+## Beau: Optimal threshold for logistic regression
+```{r}
+# Tuning model to get Optimal threshold for logistic regression
 
+set.seed(1234) 
+training_pct <- 0.5
+Z <- sample(nrow(diabetes), floor(training_pct * nrow(diabetes)))
 
+training_data <- diabetes[Z, ]
+
+test_data <- diabetes[-Z, ]
+
+full_reg_BINARY_LOOCV <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
+                         HDL + LDL + VLDL + BMI_Category,
+                       family = "binomial",
+                       data = training_data)   # initial model
+
+# Predict probabilities on the test data
+Prob <- predict(full_reg_BINARY_LOOCV, newdata = test_data, type = "response")
+
+threshold <- seq(0, 1, 0.01)
+
+# Initialize vectors to store rates for various thresholds
+TPR <- FPR <- err.rate <- numeric(length(threshold))
+
+# Loop over thresholds to calculate TPR, FPR, and error rate
+for (i in seq_along(threshold)) {
+    # Classify as 'yes' if probability >= threshold, else 'no'
+    # Assuming 'yes' corresponds to CLASS_BINARY == 1
+    Yhat <- ifelse(Prob >= threshold[i], 1, 0)
+    
+    # Actual binary outcomes from the test data
+    Actual <- test_data$CLASS_BINARY
+    
+    # Calculate error rate, True Positive Rate (TPR), and False Positive Rate (FPR)
+    err.rate[i] <- mean(Yhat != Actual)
+    TPR[i] <- sum(Yhat == 1 & Actual == 1) / sum(Actual == 1)
+    FPR[i] <- sum(Yhat == 1 & Actual == 0) / sum(Actual == 0)
+}
+
+# Find the threshold with the minimum error rate
+optimal_index <- which.min(err.rate)
+optimal_threshold <- threshold[optimal_index]
+
+print(paste("Optimal threshold:", optimal_threshold))
+```
+```{r}
+#plot of Optimal threshold: (the prediction of accuracy rate is so high????)
+ggplot(tibble(threshold, err.rate),
+       aes(threshold, err.rate)) + 
+  geom_point()
+
+```
+```{r}
+Yhat <- ifelse(Prob >= threshold[which.min(err.rate)], "1", "0")
+
+Actual <- test_data$CLASS_BINARY
+
+accuracy <- sum(Yhat == Actual) / length(Actual)
+print(paste("Accuracy rate after applying the optimal threshold:", accuracy))
+table(Yhat, test_data$CLASS_BINARY)
+```
 ## Sheila: KNN
 
 ```{r}
