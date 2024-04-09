@@ -97,6 +97,7 @@ gg_base + geom_bar(mapping = aes(x = Gender,
   theme_bw() +
   labs(y = "Pencentage",
        fill = "BMI Category")
+
 ```
 
 ```{r}
