@@ -21,6 +21,10 @@ library(car)
 library(olsrr)
 library(tree)
 library(FNN)
+library(class)
+library(pROC)
+library(ggplot2)
+library(kknn)
 ```
 
 ## Data preparation
@@ -331,7 +335,9 @@ loocv_error <- cv_loocv$delta[1]
 # Print the LOOCV prediction error
 print(paste("LOOCV Prediction Error:", loocv_error))
 ```
+
 ## Beau: Optimal threshold for logistic regression
+
 ```{r}
 # Tuning model to get Optimal threshold for logistic regression
 
@@ -377,6 +383,7 @@ optimal_threshold <- threshold[optimal_index]
 
 print(paste("Optimal threshold:", optimal_threshold))
 ```
+
 ```{r}
 #plot of Optimal threshold: (the prediction of accuracy rate is so high????)
 ggplot(tibble(threshold, err.rate),
@@ -384,6 +391,7 @@ ggplot(tibble(threshold, err.rate),
   geom_point()
 
 ```
+
 ```{r}
 Yhat <- ifelse(Prob >= threshold[which.min(err.rate)], "1", "0")
 
@@ -393,79 +401,42 @@ accuracy <- sum(Yhat == Actual) / length(Actual)
 print(paste("Accuracy rate after applying the optimal threshold:", accuracy))
 table(Yhat, test_data$CLASS_BINARY)
 ```
+
 ## Sheila: KNN
-
 ```{r}
-library(class)
-library(caret) 
+set.seed(1234) 
 
-set.seed(123)  
-index <- createDataPartition(diabetes_data$CLASS, p = 0.5, list = FALSE)
-train <- diabetes_data[index,]
-test <- diabetes_data[-index,]
+n <- nrow(diabetes)
+training_pct <- 0.75 
 
-trainX <- scale(train[, c(4:11)])  
-testX <- scale(test[, c(4:11)], center = attr(trainX, "scaled:center"), scale = attr(trainX, "scaled:scale"))
-trainY <- train$CLASS
-testY <- test$CLASS
+Z <- sample(seq_len(n), size = floor(n * training_pct))
 
-k <- 5
-pred <- knn(train = trainX, test = testX, cl = trainY, k = k)
+train_data <- diabetes[Z, ]
+test_data <- diabetes[-Z, ]
 
-# Evaluate the model
-confMat <- table(Predicted = pred, Actual = testY)
-print(confMat)
-accuracy <- sum(diag(confMat)) / sum(confMat)
-print(paste("Accuracy:", accuracy))
+X_train <- model.matrix(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG +HDL + LDL + VLDL + BMI + BMI_Category, data = train_data)[,-1]
+Y_train <- train_data$CLASS_BINARY
+X_test <- model.matrix(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + HDL + LDL + VLDL + BMI + BMI_Category, data = test_data)[,-1]
+Y_test <- test_data$CLASS_BINARY
 ```
 
 ```{r}
-library(class)
-library(pROC)
+library(ggplot2)
+library(dplyr)
 
-auc_values <- numeric()  # To store AUC values
-k_values <- 1:20  # Range of k values to test
+err_class <- numeric(100)
+tpr <- numeric(100)
+fpr <- numeric(100)
 
-for(k in k_values) {
-  predicted_labels <- knn(train = trainX, test = testX, cl = trainY, k = k, prob = TRUE)
-  prob <- attr(predicted_labels, "prob")
-  prob_positive <- ifelse(predicted_labels == "P", prob, 1 - prob)
-  roc_obj <- roc(testY, prob_positive, levels = c("N", "P"))
-  auc_values[k] <- auc(roc_obj)
+for (k in 1:100) {
+  Yhat <- knn(X_train, X_test, Y_train, k = k)
+  err_class[k] <- mean(Yhat != Y_test)
+  # Adjust the following calculations as needed for your specific case
+  tpr[k] <- sum(Yhat == 1 & Y_test == 1) / sum(Y_test == 1)
+  fpr[k] <- sum(Yhat == 1 & Y_test == 0) / sum(Y_test == 0)
 }
 
-# Plot AUC values to see how they change with different k values
-plot(k_values, auc_values, type = "b", xlab = "k", ylab = "AUC",
-     main = "AUC vs. k for KNN")
-
-# Find the k with the highest AUC
-optimal_k <- which.max(auc_values)
-cat("Optimal value of k:", optimal_k, "\nHighest AUC:", auc_values[optimal_k])
-```
-
-```{r}
-
-set.seed(123)
-sample <- sample(c(TRUE, FALSE), nrow(diabetes), replace=TRUE, prob=c(0.5, 0.5))
-train_data <- diabetes[sample, ]
-test_data <- diabetes[-sample, ]
-x_train <- model.matrix(CLASS ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + HDL + LDL + VLDL + BMI + BMI_Category, data = train_data)[,-1] 
-y_train <- train_data$CLASS
-x_test <- model.matrix(CLASS ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + HDL + LDL + VLDL + BMI + BMI_Category, data = test_data)[,-1]
-y_test <- test_data$CLASS
-
-err_class <- rep(1:20)
-tpr <- rep(1:20)
-fpr <- rep(1:20)
-# run the loop
-for (k in 1:20) {
-  Yhat <- knn(x_train, x_test, y_train, k = k) 
-  err_class[k] <- mean(Yhat != y_test) # The prediction is not correct
-  tpr[k] <- sum(Yhat == 1 & y_test == 1) / sum(y_test == 1) # TP/P
-  fpr[k] <- sum(Yhat == 1 & y_test == 0) / sum(y_test == 0) # FP/N
-}
-
-ggplot(tibble(err_class, k = 1:20), aes(x = k, y = err_class)) +
+ggplot(tibble(err_class, k = 1:100), aes(x = k, y = err_class)) +
   geom_line()
 ```
 
@@ -483,28 +454,28 @@ err_class[which.min(err_class)] # Probability of a Mis-classification
 
 ```{r}
 # calculate the accuracy for the best k
-Yhat <-  knn(x_train, x_test, y_train, k = which.min(err_class)) 
-table(y_test, Yhat)
+Yhat <-  knn(X_train, X_test, Y_train, k = which.min(err_class)) 
+table(Y_test, Yhat)
 ```
 
 ```{r}
 # Accuracy
-(table(y_test, Yhat)[1, 1] + table(y_test, Yhat)[2, 2])/((1-0.5)*nrow(diabetes_data))
+(table(Y_test, Yhat)[1, 1] + table(Y_test, Yhat)[2, 2])/((1-0.75)*nrow(diabetes))
 ```
 
 ```{r}
-Yhat <-  knn(x_train,x_test, y_train, k = 20) 
-table(y_test, Yhat) # the Confusion Matrix
+Yhat <-  knn(X_train,X_test, Y_train, k = 100) 
+table(Y_test, Yhat) # the Confusion Matrix
 ```
 
 ```{r}
 # Accuracy
-(table(y_test, Yhat)[1, 1] + table(y_test, Yhat)[2, 2])/(.5*nrow(diabetes_data))
+(table(Y_test, Yhat)[1, 1] + table(Y_test, Yhat)[2, 2])/(.75*nrow(diabetes))
 ```
 
 ```{r}
-Yhat <-  knn(x_train, x_test, y_train, k = which.min(err_class)) 
-table(y_test, Yhat) # the Confusion Matrix
+Yhat <-  knn(X_train, X_test, Y_train, k = which.min(err_class)) 
+table(Y_test, Yhat) # the Confusion Matrix
 ```
 
 ```{r}
@@ -512,7 +483,19 @@ ggplot(tibble(tpr, fpr), aes(x = fpr, y = tpr)) +
   geom_line() +
   geom_abline(color = "red", lty = 3) +
   ylim(0, 1) + xlim(0, 1) +
-  geom_hline(yintercept = mean(as.numeric(diabetes_data$CLASS)-1), color = "green", lty = 2)
+  geom_hline(yintercept = mean(as.numeric(diabetes$CLASS)-1), color = "green", lty = 2)
+```
+
+# Sheila: KNN regression
+```{r}
+formula <- CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG +HDL + LDL + VLDL + BMI + BMI_Category
+
+fit <- kknn(formula, train_data, test_data, k = 28, distance = 1, kernel = "optimal")
+
+predictions <- fitted(fit)
+
+mse <- mean((predictions - test_data$CLASS_BINARY)^2)
+print(mse)
 ```
 
 ## Beau: STEP WISE
