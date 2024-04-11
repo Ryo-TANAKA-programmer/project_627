@@ -486,16 +486,15 @@ ggplot(tibble(tpr, fpr), aes(x = fpr, y = tpr)) +
   geom_hline(yintercept = mean(as.numeric(diabetes$CLASS)-1), color = "green", lty = 2)
 ```
 
-# Sheila: KNN regression
+## Sheila: KNN regression
 ```{r}
 formula <- CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG +HDL + LDL + VLDL + BMI + BMI_Category
 
-fit <- kknn(formula, train_data, test_data, k = 28, distance = 1, kernel = "optimal")
+fit <- kknn(formula, train_data, test_data, k = 11, distance = 1, kernel = "optimal")
 
 predictions <- fitted(fit)
 
-mse <- mean((predictions - test_data$CLASS_BINARY)^2)
-print(mse)
+confusionMatrix(data = predictions, reference = as.factor(test_data$CLASS_BINARY))
 ```
 
 ## Beau: STEP WISE
