@@ -33,7 +33,7 @@ library(kknn)
 
 setwd(getwd()) # setting working directory for users
 
-diabetes_data <- read_csv("Dataset_of_Diabetes.csv")
+diabetes_data <- read.csv("Dataset_of_Diabetes.csv")
 
 # To make Tree, I converted BMI into factor-based variable
 # 1: Underweight, 2: Normal, 3: Overweight 4: Obese
@@ -403,6 +403,7 @@ table(Yhat, test_data$CLASS_BINARY)
 ```
 
 ## Sheila: KNN
+
 ```{r}
 set.seed(1234) 
 
@@ -487,6 +488,7 @@ ggplot(tibble(tpr, fpr), aes(x = fpr, y = tpr)) +
 ```
 
 ## Sheila: KNN regression
+
 ```{r}
 formula <- CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG +HDL + LDL + VLDL + BMI + BMI_Category
 
@@ -804,14 +806,70 @@ min(err.rate)
 
 ```
 
+# PCA
+
+```{r}
+library("ggplot2")
+library("gridExtra")
+#install.packages("ggbiplot")
+library(ggbiplot)
+library("corrplot")
+library(factoextra)
+
+Data.pca<-prcomp(diabetes[,c(2:10)], center = TRUE,scale. = TRUE)
+summary(Data.pca)
+
+
+#scree plot
+pca<-Data.pca
+eig.val = eig.val <- pca$sdev^2
+fviz_eig(pca, addlabels = TRUE, ylim = c(0, 50))
+
+
+# to see the most contributing variables for each dimension
+var=get_pca_var(pca)
+corrplot(var$cos2, is.corr=FALSE)
+
+
+#to see the most contributing variables for both dimension
+fviz_cos2(pca, choice = "var", axes = 1:5)
+
+#Graph of variables
+fviz_pca_var(pca,
+             col.var = "cos2",
+             gradient.cols = c("red", "blue", "green"),
+             repel = TRUE)
+
+# plot using PC1 and PC2
+ggbiplot(pca,ellipse=TRUE,choices=c(1,2),labels=rownames(diabetes), groups=diabetes$CLASS_BINARY)
+# scale the samples
+ggbiplot(pca,ellipse=TRUE,obs.scale = 2, var.scale = 4.5,
+         labels=rownames(diabetes), groups=diabetes$CLASS_BINARY)
+#remove the arrows altogether
+ggbiplot(pca,ellipse=TRUE,obs.scale = 1, var.scale = 1,var.axes=FALSE,
+         labels=rownames(diabetes), groups=diabetes$CLASS_BINARY)
+
+
+
+library(ggbiplot)
+library(ggplot2)
+
+# Create the ggbiplot
+plot <- ggbiplot(pca, ellipse = TRUE, obs.scale = 2, var.scale = 4.5, groups = diabetes$CLASS_BINARY)  +
+  ggtitle("PCA of Diabetes Patients") +
+  theme_minimal() +
+  theme(legend.position = "bottom") + guides(colour = FALSE)
+
+# Increase the size of the plot and save it
+ggsave("pca_plot.png", plot, width = 10, height = 8)
+```
+
 # Apendix
 
 ```{r}
-  
-data_test<- diabetes%>%
-  select(-c(Gender,BMI_Category))
+library(dplyr)
 
-# Assuming Clean_data is your dataframe and CLASS is the grouping variable
+data_test <- diabetes[,c(2:11,14)]
 
 # Define the function to perform ANOVA and tidy results
 perform_anova <- function(data, group_var, ...) {
@@ -835,12 +893,12 @@ perform_anova <- function(data, group_var, ...) {
 }
 
 # Apply the function to your data
-data_anova <- data_test  %>%
-  do(perform_anova(data_test, "CLASS"))
+data_anova <- diabetes  %>%
+  do(perform_anova(data_test, "CLASS_BINARY"))
 
 # Group by CLASS and calculate mean for each numeric variable
 means_by_class <- data_test %>%
-  group_by(CLASS) %>%
+  group_by(CLASS_BINARY) %>%
   summarise_all(mean,na.rm = TRUE)
 
 additional_values_df <- data.frame(
