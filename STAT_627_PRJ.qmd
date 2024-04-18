@@ -150,7 +150,7 @@ diabetes <- diabetes %>%
 diabetes$Gender <- as.factor(diabetes$Gender)
 
 # removed BMI and CLASS since we now have categorical variables 
-diabetes_tree <- diabetes[-c(11,12)]
+diabetes_tree <- diabetes[-c(12,13)]
 
 # The following command will randomly select 60% of the row numbers in the data set to represent the training data
 training <- sample(1:nrow(diabetes_tree), 
@@ -188,11 +188,12 @@ DIA_test_results <- diabetes_tree[-training,
 ### Creating a model for classification tree
 
 ```{r}
-# Put this back to dinary
+# Put this back to binary
 diabetes$CLASS_BINARY <- as.factor(diabetes$CLASS_BINARY)
 
-DIA_tree <- tree(CLASS_BINARY ~ .,
+DIA_tree <- tree(CLASS_BINARY ~ Gender + HbA1c + Chol + TG + BMI,
                  data = diabetes_tree[training,])
+
 plot(DIA_tree)
 text(DIA_tree)
 ```
@@ -219,7 +220,11 @@ best.error.rate <- 99999999
 for (i in seq(from = 0.0005, 
               to = 0.05, 
               by = 0.0005)) {
-  DIA_tree <- tree(CLASS_BINARY ~ .,
+  DIA_tree <- tree(CLASS_BINARY ~ Gender + 
+                     HbA1c + 
+                     Chol + 
+                     TG + 
+                     BMI,
                    data = diabetes_tree[training,],
                    mindev = i)
   DIA_tree_proportions <- predict(DIA_tree,
@@ -233,10 +238,14 @@ for (i in seq(from = 0.0005,
   }
 }
 
-print(paste("The optimal value of mindev is",best.mindev,"with an overall error rate of",best.error.rate))
+print(paste("The optimal value of mindev is",best.mindev,"with an accuracy rate",1 -best.error.rate))
 
 # The following commands re-create and plot the optimal tree
-DIA_BEST_TREE <- tree(CLASS_BINARY ~ ., 
+DIA_BEST_TREE <- tree(CLASS_BINARY ~ Gender + 
+                     HbA1c + 
+                     Chol + 
+                     TG + 
+                     BMI, 
                       data = diabetes_tree[training,], 
                       mindev = best.mindev)
 plot(DIA_BEST_TREE)
@@ -400,6 +409,7 @@ Actual <- test_data$CLASS_BINARY
 accuracy <- sum(Yhat == Actual) / length(Actual)
 print(paste("Accuracy rate after applying the optimal threshold:", accuracy))
 table(Yhat, test_data$CLASS_BINARY)
+text(DIA_BEST_TREE, cex = 0.8)
 ```
 
 ## Sheila: KNN
