@@ -140,7 +140,7 @@ diabetes <- diabetes %>%
 diabetes$Gender <- as.factor(diabetes$Gender)
 ```
 
-## Tree
+## Ryo: Tree
 
 ```{r}
 diabetes <- diabetes %>% 
@@ -247,8 +247,9 @@ DIA_BEST_TREE <- tree(CLASS_BINARY ~ Gender +
                       data = diabetes_tree[training,], 
                       mindev = best.mindev)
 plot(DIA_BEST_TREE)
-text(DIA_BEST_TREE, cex=0.5)
+text(DIA_BEST_TREE, cex = 0.8)
 ```
+
 
 
 ## Beau: Working on LOOCV using Logistic Regression
