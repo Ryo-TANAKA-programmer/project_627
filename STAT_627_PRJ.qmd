@@ -4,8 +4,6 @@ format: pdf
 editor: visual
 ---
 
-# Hey Bright!! I got your message!
-
 # Please **git pull** first before you edit the file!
 
 ```{r}
@@ -321,14 +319,7 @@ for (i in 1:100) {
 print(paste("The optimal value of k is",best.k,"with an overall error rate of",best.error.rate))
 ```
 
-## Ryo: LOOCV
-
-```{r}
-diabetes_LOOCV <- diabetes[-c(11,12)]
-
-```
-
-## Ryo and Beau is working on LOOCV using Logistic Regression
+## Beau: Working on LOOCV using Logistic Regression
 
 ```{r}
 # probably works?
