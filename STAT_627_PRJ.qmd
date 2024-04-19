@@ -70,7 +70,7 @@ diabetes <- diabetes[-c(1,2,16)]
 
 # Removing CLASS = P from the dataset
 diabetes <- diabetes %>%
-  filter(CLASS != "P") 
+  filter(CLASS != "P") gi
 
 # Converting and making a new variable, CLASS_Binary N = 0 and Y = 1 for CLASS
 diabetes <- diabetes %>%
