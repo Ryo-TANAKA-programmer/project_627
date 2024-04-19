@@ -56,6 +56,7 @@ unique_values
 # diabetes <- diabetes_data %>%
 #   mutate(across(c(3, 14), ~ recode(., "f" = "F", "N " = "N", "Y " = "Y")))
 
+# Renaming the dataset
 diabetes <- diabetes_data
 
 unique_values1 <- lapply(diabetes[c("Gender", "CLASS","BMI_Category")], unique)
@@ -67,10 +68,14 @@ diabetes <- diabetes %>%
 # Removing ID and Patient Number and missing_count since we don't need them
 diabetes <- diabetes[-c(1,2,16)]
 
-# make CLASS to 0 and 1
+# Removing CLASS = P from the dataset
 diabetes <- diabetes %>%
-  mutate(CLASS_BINARY = if_else(CLASS == "Y" | CLASS == "P", 1, 0))
+  filter(CLASS != "P") 
 
+# Converting and making a new variable, CLASS_Binary N = 0 and Y = 1 for CLASS
+diabetes <- diabetes %>%
+  mutate(CLASS_BINARY = if_else(CLASS == "N",0,1))
+  
 # Converting CLASS_BINARY
 diabetes$CLASS_BINARY <- as.factor(diabetes$CLASS_BINARY)
 ```
@@ -143,9 +148,9 @@ diabetes$Gender <- as.factor(diabetes$Gender)
 ## Ryo: Tree
 
 ```{r}
-diabetes <- diabetes %>% 
-  mutate(Gender = if_else(diabetes$Gender == "M",1,0))
-diabetes$Gender <- as.factor(diabetes$Gender)
+# diabetes <- diabetes %>% 
+#   mutate(Gender = if_else(diabetes$Gender == "M",1,0))
+# diabetes$Gender <- as.factor(diabetes$Gender)
 
 # removed BMI and CLASS since we now have categorical variables 
 diabetes_tree <- diabetes[-c(12,13)]
@@ -170,7 +175,6 @@ diabetes_tree <- diabetes_tree %>%
   mutate(CLASS_BINARY = if_else(diabetes_tree$CLASS_BINARY == 1,
                                 0,
                                 1))
-typeof(diabetes$CLASS_BINARY)
 
 DIA_training_results <- diabetes_tree[training,
                                       ycol] > 0.5
@@ -249,8 +253,6 @@ DIA_BEST_TREE <- tree(CLASS_BINARY ~ Gender +
 plot(DIA_BEST_TREE)
 text(DIA_BEST_TREE, cex = 0.8)
 ```
-
-
 
 ## Beau: Working on LOOCV using Logistic Regression
 
