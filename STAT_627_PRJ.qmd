@@ -254,21 +254,21 @@ plot(DIA_BEST_TREE)
 text(DIA_BEST_TREE, cex = 0.8)
 ```
 
-## Beau: Working on LOOCV using Logistic Regression
+## Beau is working on K-fold CV using Logistic Regression
 
 ```{r}
-# probably works?
-full_reg_BINARY_LOOCV <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
-                         HDL + LDL + VLDL + BMI_Category,
-                       family = "binomial",
-                       data = diabetes)   # initial model
 
-cv_loocv <- cv.glm(diabetes, full_reg_BINARY_LOOCV, K = nrow(diabetes))
+full_reg_BINARY_kfold <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
+                               HDL + LDL + VLDL + BMI,
+                             family = "binomial",
+                             data = diabetes)   # initial model
 
-loocv_error <- cv_loocv$delta[1]
+cv_loocv <- cv.glm(diabetes, full_reg_BINARY_kfold, K = 10)
 
-# Print the LOOCV prediction error
-print(paste("LOOCV Prediction Error:", loocv_error))
+kfold_error <- cv_loocv$delta[1]
+
+# Print the K-fold prediction error
+print(paste("K-fold Prediction Error:", kfold_error))
 ```
 
 ## Beau: Optimal threshold for logistic regression
@@ -284,13 +284,13 @@ training_data <- diabetes[Z, ]
 
 test_data <- diabetes[-Z, ]
 
-full_reg_BINARY_LOOCV <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
-                         HDL + LDL + VLDL + BMI_Category,
-                       family = "binomial",
-                       data = training_data)   # initial model
+full_reg_BINARY_kfold_train <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
+                                     HDL + LDL + VLDL + BMI,
+                                   family = "binomial",
+                                   data = training_data)   # initial model
 
 # Predict probabilities on the test data
-Prob <- predict(full_reg_BINARY_LOOCV, newdata = test_data, type = "response")
+Prob <- predict(full_reg_BINARY_kfold_train, newdata = test_data, type = "response")
 
 threshold <- seq(0, 1, 0.01)
 
@@ -299,17 +299,17 @@ TPR <- FPR <- err.rate <- numeric(length(threshold))
 
 # Loop over thresholds to calculate TPR, FPR, and error rate
 for (i in seq_along(threshold)) {
-    # Classify as 'yes' if probability >= threshold, else 'no'
-    # Assuming 'yes' corresponds to CLASS_BINARY == 1
-    Yhat <- ifelse(Prob >= threshold[i], 1, 0)
-    
-    # Actual binary outcomes from the test data
-    Actual <- test_data$CLASS_BINARY
-    
-    # Calculate error rate, True Positive Rate (TPR), and False Positive Rate (FPR)
-    err.rate[i] <- mean(Yhat != Actual)
-    TPR[i] <- sum(Yhat == 1 & Actual == 1) / sum(Actual == 1)
-    FPR[i] <- sum(Yhat == 1 & Actual == 0) / sum(Actual == 0)
+  # Classify as 'yes' if probability >= threshold, else 'no'
+  # Assuming 'yes' corresponds to CLASS_BINARY == 1
+  Yhat <- ifelse(Prob >= threshold[i], 1, 0)
+  
+  # Actual binary outcomes from the test data
+  Actual <- test_data$CLASS_BINARY
+  
+  # Calculate error rate, True Positive Rate (TPR), and False Positive Rate (FPR)
+  err.rate[i] <- mean(Yhat != Actual)
+  TPR[i] <- sum(Yhat == 1 & Actual == 1) / sum(Actual == 1)
+  FPR[i] <- sum(Yhat == 1 & Actual == 0) / sum(Actual == 0)
 }
 
 # Find the threshold with the minimum error rate
@@ -335,7 +335,6 @@ Actual <- test_data$CLASS_BINARY
 accuracy <- sum(Yhat == Actual) / length(Actual)
 print(paste("Accuracy rate after applying the optimal threshold:", accuracy))
 table(Yhat, test_data$CLASS_BINARY)
-text(DIA_BEST_TREE, cex = 0.8)
 ```
 
 ## Sheila: KNN
@@ -351,9 +350,9 @@ Z <- sample(seq_len(n), size = floor(n * training_pct))
 train_data <- diabetes[Z, ]
 test_data <- diabetes[-Z, ]
 
-X_train <- model.matrix(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG +HDL + LDL + VLDL + BMI + BMI_Category, data = train_data)[,-1]
+X_train <- model.matrix(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG +HDL + LDL + VLDL + BMI , data = train_data)[,-1]
 Y_train <- train_data$CLASS_BINARY
-X_test <- model.matrix(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + HDL + LDL + VLDL + BMI + BMI_Category, data = test_data)[,-1]
+X_test <- model.matrix(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + HDL + LDL + VLDL + BMI , data = test_data)[,-1]
 Y_test <- test_data$CLASS_BINARY
 ```
 
@@ -426,7 +425,7 @@ ggplot(tibble(tpr, fpr), aes(x = fpr, y = tpr)) +
 ## Sheila: KNN regression
 
 ```{r}
-formula <- CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG +HDL + LDL + VLDL + BMI + BMI_Category
+formula <- CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG +HDL + LDL + VLDL + BMI 
 
 fit <- kknn(formula, train_data, test_data, k = 11, distance = 1, kernel = "optimal")
 
@@ -440,10 +439,10 @@ confusionMatrix(data = predictions, reference = as.factor(test_data$CLASS_BINARY
 ```{r}
 fit.small <- glm(CLASS_BINARY~ 1,
                  family = "binomial",
-                data = diabetes)
+                 data = diabetes)
 
 full_reg_BINARY <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
-                         HDL + LDL + VLDL + BMI + BMI_Category,
+                         HDL + LDL + VLDL + BMI,
                        family = "binomial",
                        data = diabetes)   # initial model
 
