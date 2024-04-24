@@ -193,7 +193,13 @@ DIA_test_results <- diabetes_tree[-training,
 # Put this back to binary
 diabetes$CLASS_BINARY <- as.factor(diabetes$CLASS_BINARY)
 
-DIA_tree <- tree(CLASS_BINARY ~ Gender + HbA1c + Chol + TG + BMI,
+DIA_tree <- tree(CLASS_BINARY ~ Gender + 
+                   AGE + 
+                   Urea + 
+                   Cr + 
+                   HbA1c + 
+                   Chol + 
+                   TG + HDL + LDL + VLDL + BMI,
                  data = diabetes_tree[training,])
 
 plot(DIA_tree)
@@ -223,10 +229,12 @@ for (i in seq(from = 0.0005,
               to = 0.05, 
               by = 0.0005)) {
   DIA_tree <- tree(CLASS_BINARY ~ Gender + 
-                     HbA1c + 
-                     Chol + 
-                     TG + 
-                     BMI,
+                   AGE + 
+                   Urea + 
+                   Cr + 
+                   HbA1c + 
+                   Chol + 
+                   TG + HDL + LDL + VLDL + BMI,
                    data = diabetes_tree[training,],
                    mindev = i)
   DIA_tree_proportions <- predict(DIA_tree,
