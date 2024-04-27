@@ -7,7 +7,7 @@ editor: visual
 # Please **git pull** first before you edit the file!
 
 ```{r}
-library(dplyr)
+suppressPackageStartupMessages({library(dplyr)
 library(tidyverse)
 library(leaps)
 library(rms)
@@ -23,6 +23,9 @@ library(class)
 library(pROC)
 library(ggplot2)
 library(kknn)
+library(lmtest)
+library(gridExtra)
+})
 ```
 
 ## Data preparation
@@ -56,6 +59,7 @@ unique_values
 # diabetes <- diabetes_data %>%
 #   mutate(across(c(3, 14), ~ recode(., "f" = "F", "N " = "N", "Y " = "Y")))
 
+
 # Renaming the dataset
 diabetes <- diabetes_data
 
@@ -78,12 +82,39 @@ diabetes <- diabetes %>%
   
 # Converting CLASS_BINARY
 diabetes$CLASS_BINARY <- as.factor(diabetes$CLASS_BINARY)
+str(diabetes)
 ```
 
 ## Summary of the entire Dataset
 
 ```{r}
 summary(diabetes)
+```
+
+```{r}
+library(dplyr)
+
+diabetes <- diabetes %>%
+  mutate(
+    # Convert Gender to factor
+    Gender = as.factor(Gender),
+    
+    # Convert all numeric columns except AGE to double precision
+    across(where(is.numeric) & !matches("AGE"), as.double),
+    
+    # Convert AGE to numeric
+    AGE = as.numeric(AGE),
+    
+    # Convert other numeric variables to numeric if they are not already
+    across(where(is.numeric), as.numeric),
+    
+    # Convert CLASS and CLASS_BINARY to factor
+    across(c(CLASS, CLASS_BINARY), as.factor)
+  )
+
+# Check the structure of the data frame after conversion
+str(diabetes)
+
 ```
 
 ```{r}
@@ -143,14 +174,137 @@ is.factor(diabetes$Gender)
 diabetes <- diabetes %>%
   mutate(Gender = if_else(Gender == "F",0,1))
 diabetes$Gender <- as.factor(diabetes$Gender)
+
+str(diabetes)
+
 ```
+
+# Bright Regression
+
+```{r}
+
+model <- lm(HbA1c ~ as.factor(Gender )+ AGE + Urea + Cr + Chol + TG + HDL + LDL + VLDL + BMI + as.factor(CLASS_BINARY), data = diabetes)
+
+# Summary of the model
+summary(model)
+
+# Calculate VIF for each predictor
+vif_values <- car::vif(model)
+
+# Display VIF values
+print(vif_values)
+
+# Perform stepwise selection
+step_model <- stepAIC(model, direction = "both")
+
+# Summary of the stepwise selected model
+summary(step_model)
+
+
+
+# Extract residuals, fitted values, and other relevant diagnostic statistics
+residuals <- resid(step_model)
+fitted_values <- fitted(step_model)
+std_resid <- rstandard(step_model)
+cooksd <- cooks.distance(step_model)
+
+# Create individual diagnostic plots
+# 1. Residuals vs Fitted plot for linearity
+plot1 <- ggplot(data.frame(Fitted = fitted_values, Residuals = residuals), aes(x = Fitted, y = Residuals)) +
+  geom_point() +
+  geom_smooth(method = "loess", formula = y ~ x) +  # Specify the formula explicitly
+  labs(x = "Fitted values", y = "Residuals") +
+  ggtitle("Residuals vs Fitted")
+
+# 2. QQ plot for normality of residuals
+plot2 <- ggplot(data.frame(Standardized_Residuals = std_resid), aes(sample = Standardized_Residuals)) +
+  stat_qq() +
+  stat_qq_line() +
+  labs(x = "Theoretical Quantiles", y = "Sample Quantiles") +
+  ggtitle("Normal Q-Q Plot")
+
+# 3. Residuals vs Leverage plot for influential points
+plot3 <- ggplot(data.frame(Residuals = std_resid, Leverage = hatvalues(model)), aes(x = Leverage, y = Residuals)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(x = "Leverage", y = "Standardized Residuals") +
+  ggtitle("Residuals vs Leverage")
+
+# 4. Cook's Distance plot for influential points
+plot4 <- ggplot(data, aes(x = index, y = Cook_Distance)) +
+  geom_point(shape = 19) +  # Scatter plot
+  coord_cartesian(ylim = c( 0,0.015)) +  # Limit y-axis
+  labs(x = "Case Index", y = "Cook's Distance", title = "Cook's Distance Index Plot") +  # Labels
+  geom_hline(yintercept = 4 / length(cook_distances), color = "red", linetype = 2) +  # Reference line
+  geom_text(data = data[influential_cases, ], aes(label = index), vjust = -1, color = "blue")  # Text for influential cases
+
+# Arrange plots in a grid
+grid.arrange(plot1, plot2, plot3, plot4, ncol = 2)
+
+
+
+
+```
+
+```{r}
+# Identify influential cases based on Cook's distance
+influential_cases <- which(cook_distances > 4 / length(cook_distances))
+
+# Just influential cases from the data
+data_filtered <- diabetes[influential_cases, ]
+names(data_filtered)
+
+summary(data_filtered[,c(1,2,3,5,6,7,11,14)])
+
+```
+
+```{r}
+# Address heteroscedasticity by transforming the dependent variable
+model_transformed <- lm(log(HbA1c) ~ as.factor(Gender) + AGE + Urea + Chol + 
+    TG + BMI + as.factor(CLASS_BINARY), data = diabetes) # Using natural log transformation
+
+# Check for heteroscedasticity again
+bptest(model_transformed)
+summary(model_transformed)
+
+# Plot residuals vs fitted values for transformed model
+pp1 <- ggplot(diabetes, aes(fitted(model_transformed), residuals(model_transformed))) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  labs(x = "Fitted Values", y = "Residuals") +
+  ggtitle("Residuals vs Fitted Values")
+
+# Exclude influential cases from the data
+data_clean <- diabetes[-influential_cases, ]
+
+model_transformed2 <- lm(log(HbA1c) ~ as.factor(Gender) + AGE + Urea + Chol + 
+    TG + BMI + as.factor(CLASS_BINARY), data = data_clean) # Using natural log transformation
+
+# Check for heteroscedasticity again
+bptest(model_transformed2)
+summary(model_transformed2)
+
+# Plot residuals vs fitted values for transformed model
+pp2 <- ggplot(data_clean, aes(fitted(model_transformed2), residuals(model_transformed2))) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  labs(x = "Fitted Values", y = "Residuals") +
+  ggtitle("Residuals vs Fitted Values (Outlier)")
+
+# Display plots side by side
+grid.arrange(pp1, pp2, ncol = 3)
+
+
+```
+
+-   With a p-value of 0.03394, indicating significance below the common threshold of 0.05, we can confidently dismiss the null hypothesis of homoscedasticity. This suggests substantial evidence pointing to heteroscedasticity in the model, demonstrating improvement with transformation compared to the untransformed model, alongside an increase in R-squared from 34% to 47%.
 
 ## Ryo: Tree
 
 ```{r}
-# diabetes <- diabetes %>% 
-#   mutate(Gender = if_else(diabetes$Gender == "M",1,0))
-# diabetes$Gender <- as.factor(diabetes$Gender)
+diabetes <- diabetes %>% 
+  mutate(Gender = if_else(diabetes$Gender == "M",1,0))
+diabetes$Gender <- as.factor(diabetes$Gender)
 
 # removed BMI and CLASS since we now have categorical variables 
 diabetes_tree <- diabetes[-c(12,13)]
@@ -175,6 +329,7 @@ diabetes_tree <- diabetes_tree %>%
   mutate(CLASS_BINARY = if_else(diabetes_tree$CLASS_BINARY == 1,
                                 0,
                                 1))
+typeof(diabetes$CLASS_BINARY)
 
 DIA_training_results <- diabetes_tree[training,
                                       ycol] > 0.5
@@ -193,13 +348,7 @@ DIA_test_results <- diabetes_tree[-training,
 # Put this back to binary
 diabetes$CLASS_BINARY <- as.factor(diabetes$CLASS_BINARY)
 
-DIA_tree <- tree(CLASS_BINARY ~ Gender + 
-                   AGE + 
-                   Urea + 
-                   Cr + 
-                   HbA1c + 
-                   Chol + 
-                   TG + HDL + LDL + VLDL + BMI,
+DIA_tree <- tree(CLASS_BINARY ~ Gender + HbA1c + Chol + TG + BMI,
                  data = diabetes_tree[training,])
 
 plot(DIA_tree)
@@ -229,12 +378,10 @@ for (i in seq(from = 0.0005,
               to = 0.05, 
               by = 0.0005)) {
   DIA_tree <- tree(CLASS_BINARY ~ Gender + 
-                   AGE + 
-                   Urea + 
-                   Cr + 
-                   HbA1c + 
-                   Chol + 
-                   TG + HDL + LDL + VLDL + BMI,
+                     HbA1c + 
+                     Chol + 
+                     TG + 
+                     BMI,
                    data = diabetes_tree[training,],
                    mindev = i)
   DIA_tree_proportions <- predict(DIA_tree,
@@ -261,23 +408,33 @@ DIA_BEST_TREE <- tree(CLASS_BINARY ~ Gender +
 plot(DIA_BEST_TREE)
 text(DIA_BEST_TREE, cex = 0.8)
 
+
 ```
 
-## Beau: K-fold CV using Logistic Regression
+```{r}
+# Predict outcomes on the test set using the optimal tree
+tree_survived_predicted <- predict(DIA_BEST_TREE, DIA_test, type = "class")
+
+# Evaluate the model using a confusion matrix
+confusionMatrix(tree_survived_predicted, DIA_test)
+
+```
+
+## Beau: Working on LOOCV using Logistic Regression
 
 ```{r}
+# probably works?
+full_reg_BINARY_LOOCV <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
+                         HDL + LDL + VLDL + BMI_Category,
+                       family = "binomial",
+                       data = diabetes)   # initial model
 
-full_reg_BINARY_kfold <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol +
-                               TG + HDL + LDL + VLDL + BMI,
-                             family = "binomial",
-                             data = diabetes)   # initial model
+cv_loocv <- cv.glm(diabetes, full_reg_BINARY_LOOCV, K = nrow(diabetes))
 
-cv_loocv <- cv.glm(diabetes, full_reg_BINARY_kfold, K = 10)
+loocv_error <- cv_loocv$delta[1]
 
-kfold_error <- cv_loocv$delta[1]
-
-# Print the K-fold prediction error
-print(paste("K-fold Prediction Error:", kfold_error))
+# Print the LOOCV prediction error
+print(paste("LOOCV Prediction Error:", loocv_error))
 ```
 
 ## Beau: Optimal threshold for logistic regression
@@ -293,13 +450,13 @@ training_data <- diabetes[Z, ]
 
 test_data <- diabetes[-Z, ]
 
-full_reg_BINARY_kfold_train <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
-                                     HDL + LDL + VLDL + BMI,
-                                   family = "binomial",
-                                   data = training_data)   # initial model
+full_reg_BINARY_LOOCV <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
+                         HDL + LDL + VLDL + BMI_Category,
+                       family = "binomial",
+                       data = training_data)   # initial model
 
 # Predict probabilities on the test data
-Prob <- predict(full_reg_BINARY_kfold_train, newdata = test_data, type = "response")
+Prob <- predict(full_reg_BINARY_LOOCV, newdata = test_data, type = "response")
 
 threshold <- seq(0, 1, 0.01)
 
@@ -308,17 +465,17 @@ TPR <- FPR <- err.rate <- numeric(length(threshold))
 
 # Loop over thresholds to calculate TPR, FPR, and error rate
 for (i in seq_along(threshold)) {
-  # Classify as 'yes' if probability >= threshold, else 'no'
-  # Assuming 'yes' corresponds to CLASS_BINARY == 1
-  Yhat <- ifelse(Prob >= threshold[i], 1, 0)
-  
-  # Actual binary outcomes from the test data
-  Actual <- test_data$CLASS_BINARY
-  
-  # Calculate error rate, True Positive Rate (TPR), and False Positive Rate (FPR)
-  err.rate[i] <- mean(Yhat != Actual)
-  TPR[i] <- sum(Yhat == 1 & Actual == 1) / sum(Actual == 1)
-  FPR[i] <- sum(Yhat == 1 & Actual == 0) / sum(Actual == 0)
+    # Classify as 'yes' if probability >= threshold, else 'no'
+    # Assuming 'yes' corresponds to CLASS_BINARY == 1
+    Yhat <- ifelse(Prob >= threshold[i], 1, 0)
+    
+    # Actual binary outcomes from the test data
+    Actual <- test_data$CLASS_BINARY
+    
+    # Calculate error rate, True Positive Rate (TPR), and False Positive Rate (FPR)
+    err.rate[i] <- mean(Yhat != Actual)
+    TPR[i] <- sum(Yhat == 1 & Actual == 1) / sum(Actual == 1)
+    FPR[i] <- sum(Yhat == 1 & Actual == 0) / sum(Actual == 0)
 }
 
 # Find the threshold with the minimum error rate
@@ -332,8 +489,8 @@ print(paste("Optimal threshold:", optimal_threshold))
 #plot of Optimal threshold: (the prediction of accuracy rate is so high????)
 ggplot(tibble(threshold, err.rate),
        aes(threshold, err.rate)) + 
-  geom_point()
-
+  geom_point()+ 
+  coord_cartesian(ylim = c( 0.02,0.1))
 ```
 
 ```{r}
@@ -344,6 +501,7 @@ Actual <- test_data$CLASS_BINARY
 accuracy <- sum(Yhat == Actual) / length(Actual)
 print(paste("Accuracy rate after applying the optimal threshold:", accuracy))
 table(Yhat, test_data$CLASS_BINARY)
+text(DIA_BEST_TREE, cex = 0.8)
 ```
 
 ## Sheila: KNN
@@ -359,9 +517,9 @@ Z <- sample(seq_len(n), size = floor(n * training_pct))
 train_data <- diabetes[Z, ]
 test_data <- diabetes[-Z, ]
 
-X_train <- model.matrix(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG +HDL + LDL + VLDL + BMI , data = train_data)[,-1]
+X_train <- model.matrix(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG +HDL + LDL + VLDL + BMI + BMI_Category, data = train_data)[,-1]
 Y_train <- train_data$CLASS_BINARY
-X_test <- model.matrix(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + HDL + LDL + VLDL + BMI , data = test_data)[,-1]
+X_test <- model.matrix(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + HDL + LDL + VLDL + BMI + BMI_Category, data = test_data)[,-1]
 Y_test <- test_data$CLASS_BINARY
 ```
 
@@ -434,7 +592,7 @@ ggplot(tibble(tpr, fpr), aes(x = fpr, y = tpr)) +
 ## Sheila: KNN regression
 
 ```{r}
-formula <- CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG +HDL + LDL + VLDL + BMI 
+formula <- CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG +HDL + LDL + VLDL + BMI + BMI_Category
 
 fit <- kknn(formula, train_data, test_data, k = 11, distance = 1, kernel = "optimal")
 
@@ -448,10 +606,10 @@ confusionMatrix(data = predictions, reference = as.factor(test_data$CLASS_BINARY
 ```{r}
 fit.small <- glm(CLASS_BINARY~ 1,
                  family = "binomial",
-                 data = diabetes)
+                data = diabetes)
 
 full_reg_BINARY <- glm(CLASS_BINARY ~ Gender + AGE + Urea + Cr + HbA1c + Chol + TG + 
-                         HDL + LDL + VLDL + BMI,
+                         HDL + LDL + VLDL + BMI + BMI_Category,
                        family = "binomial",
                        data = diabetes)   # initial model
 
@@ -463,91 +621,13 @@ fit.step.15p <- step(full_reg_BINARY,
 summary(fit.step.15p)
 
 
-#glm(formula = CLASS_BINARY ~ Gender + HbA1c + Chol + TG + BMI, 
-   # family = "binomial", data = diabetes) best model with lowest AIC
-```
-
-## Beau: K-fold CV using stepwise Logistic Regression
-
-```{r}
-
-stepwise_reg_BINARY_kfold <- glm(CLASS_BINARY ~ Gender + HbA1c + Chol + TG + BMI,
-                             family = "binomial",
-                             data = diabetes)   # initial model
-
-cv_loocv <- cv.glm(diabetes, stepwise_reg_BINARY_kfold, K = 10)
-
-stepwise_kfold_error <- cv_loocv$delta[1]
-
-# Print the K-fold prediction error
-print(paste("K-fold Prediction Error:", stepwise_kfold_error))
-```
-
-## Beau: Optimal threshold for stepwise logistic regression
-
-```{r}
-# Tuning model to get Optimal threshold for logistic regression
-
-set.seed(1234) 
-training_pct <- 0.5
-Z <- sample(nrow(diabetes), floor(training_pct * nrow(diabetes)))
-
-training_data <- diabetes[Z, ]
-
-test_data <- diabetes[-Z, ]
-
-
-stepwise_reg_BINARY_kfold_train<- glm(CLASS_BINARY ~ Gender + HbA1c + Chol + TG + BMI,
-                             family = "binomial",
-                             data = training_data)  
-
-
-# Predict probabilities on the test data
-Prob <- predict(stepwise_reg_BINARY_kfold_train, newdata = test_data, type = "response")
-
-threshold <- seq(0, 1, 0.01)
-
-# Initialize vectors to store rates for various thresholds
-TPR <- FPR <- err.rate <- numeric(length(threshold))
-
-# Loop over thresholds to calculate TPR, FPR, and error rate
-for (i in seq_along(threshold)) {
-  # Classify as 'yes' if probability >= threshold, else 'no'
-  # Assuming 'yes' corresponds to CLASS_BINARY == 1
-  Yhat <- ifelse(Prob >= threshold[i], 1, 0)
-  
-  # Actual binary outcomes from the test data
-  Actual <- test_data$CLASS_BINARY
-  
-  # Calculate error rate, True Positive Rate (TPR), and False Positive Rate (FPR)
-  err.rate[i] <- mean(Yhat != Actual)
-  TPR[i] <- sum(Yhat == 1 & Actual == 1) / sum(Actual == 1)
-  FPR[i] <- sum(Yhat == 1 & Actual == 0) / sum(Actual == 0)
-}
-
-# Find the threshold with the minimum error rate
-optimal_index <- which.min(err.rate)
-optimal_threshold <- threshold[optimal_index]
-
-print(paste("Optimal threshold:", optimal_threshold))
-```
-
-```{r}
-#plot of Optimal threshold: (the prediction of accuracy rate is so high????)
-ggplot(tibble(threshold, err.rate),
-       aes(threshold, err.rate)) + 
-  geom_point()
-
-```
-
-```{r}
-Yhat <- ifelse(Prob >= threshold[which.min(err.rate)], "1", "0")
-
-Actual <- test_data$CLASS_BINARY
-
-accuracy <- sum(Yhat == Actual) / length(Actual)
-print(paste("Accuracy rate after applying the optimal threshold:", accuracy))
-table(Yhat, test_data$CLASS_BINARY)
+# last step has the best AIC which the best model is 
+# Gender
+# HbA1c
+# Chol (Cholesterol)
+# TG (Triglycerides)
+# BMI (Body Mass Index)
+# BMI_Category                             with response variable CLASS_BINARY
 ```
 
 ## CI
